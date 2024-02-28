@@ -299,7 +299,7 @@ abstract contract ERC404Legacy is Ownable {
     address from,
     address to,
     uint256 amount
-  ) internal returns (bool) {
+  ) internal virtual returns (bool) {
     uint256 unit = _getUnit();
     uint256 balanceBeforeSender = balanceOf[from];
     uint256 balanceBeforeReceiver = balanceOf[to];

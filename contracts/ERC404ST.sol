@@ -32,7 +32,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     uint256 private constant _ID_BIT = 1 << 255;
 
     // TODO test it
-    uint256 private constant _MAX_MALLABLE_ID = 1 << (96 - 1);
+    uint256 private constant _MAX_MALLABLE_ID = (1 << 95) - 1;
 
     function _authorizeSetScripts(string[] memory) internal override onlyOwner {}
 
@@ -42,7 +42,10 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         uint8 _decimals,
         uint256 _totalNativeSupply,
         address _owner
-    ) ERC404Legacy(_name, _symbol, _decimals, _totalNativeSupply, _owner) {}
+    ) ERC404Legacy(_name, _symbol, _decimals, _totalNativeSupply, _owner) {
+        balanceOf[_owner] = totalSupply;
+        whitelist[_owner] = true;
+    }
 
     function tokenURI(uint256 id_) public pure override returns (string memory) {
         return string.concat("https://to.be.changed.com/token/", Strings.toString(id_));
@@ -98,9 +101,23 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         return balanceOf[owner_];
     }
 
+    // TODO remove
+    function encodeOwnerAndId(address owner, uint mallableId) public pure returns (uint id) {
+        return _encodeOwnerAndId(owner, mallableId);
+    }
+
     function _encodeOwnerAndId(address owner, uint mallableId) internal pure returns (uint id) {
         require(mallableId < _MAX_MALLABLE_ID, "Too high mallable ID");
         id = ((uint256(uint160(owner)) & _BITMASK_ADDRESS) << 95) | _ID_BIT | mallableId;
+    }
+
+    // TODO remove
+    function decodeOwnerAndId(uint id) public pure returns (address owner, uint mallableId) {
+        if (id < _ID_BIT) {
+            revert("Invalid token ID");
+        }
+        mallableId = id & _MAX_MALLABLE_ID;
+        owner = address(uint160((id >> 95) & _BITMASK_ADDRESS));
     }
 
     function _decodeOwnerAndId(uint id) internal pure returns (address owner, uint mallableId) {
@@ -151,7 +168,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     /// @notice Function for mixed transfers
     /// @dev This function assumes id / native if amount less than or equal to current max id
     function transferFrom(address from, address to, uint256 amountOrId) public virtual override {
-        if (amountOrId < _ID_BIT) {
+        if (amountOrId > _ID_BIT) {
             address ownedOwner = _ownerOf[amountOrId];
             if (ownedOwner == address(0)) {
                 address mallableOwner = _getMallableOwner(amountOrId);
@@ -197,9 +214,15 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             emit Transfer(from, to, amountOrId);
             emit ERC20Transfer(from, to, _getUnit());
         } else {
-            uint256 allowed = allowance[from][msg.sender];
+            if (msg.sender != from) {
+                uint256 allowed = allowance[from][msg.sender];
 
-            if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amountOrId;
+                if (allowed < amountOrId) {
+                    revert("Not allowed to transfer");
+                }
+
+                if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amountOrId;
+            }
 
             _transfer(from, to, amountOrId);
         }
@@ -210,6 +233,9 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         require(amount < _ID_BIT, "Its ID, not amount");
         uint256 unit = _getUnit();
         uint256 balanceBeforeSender = balanceOf[from];
+        if (balanceBeforeSender < amount) {
+            revert("Insufficient balance");
+        }
         uint256 balanceBeforeReceiver = balanceOf[to];
 
         balanceOf[from] -= amount;
@@ -218,7 +244,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             balanceOf[to] += amount;
         }
 
-        uint totalERC721OfOwner = erc20BalanceOf(from) / _getUnit();
+        uint totalERC721OfOwner = balanceBeforeSender / unit;
         uint mallableNumber = totalERC721OfOwner - _owned[from].length;
 
         // Skip burn for certain addresses to save gas
@@ -228,10 +254,18 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             if (tokensToBurn > mallableNumber) {
                 revert("unsolidify tokens before transfer erc20");
             }
-            for (uint256 i = totalERC721OfOwner; tokensToBurn == 0; i--) {
-                if (solidified[from][i] == 0) {
-                    tokensToBurn--;
-                    emit Transfer(from, address(0), i);
+            // start from number of tokens + number of solidified tokens - balance
+            if (tokensToBurn > 0) {
+                for (
+                    uint256 i = totalERC721OfOwner + solidified[from].length - _owned[from].length;
+                    tokensToBurn > 0;
+                    i--
+                ) {
+                    // i - 1 because zero token ID exists
+                    if (solidified[from].length == 0 || solidified[from][i - 1] == 0) {
+                        tokensToBurn--;
+                        emit Transfer(from, address(0), encodeOwnerAndId(from, i - 1));
+                    }
                 }
             }
         }
@@ -240,17 +274,17 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         if (!whitelist[to]) {
             // have to emit Transfer event for OpenSea and other services
 
-            totalERC721OfOwner = erc20BalanceOf(to) / _getUnit();
-            mallableNumber = totalERC721OfOwner - _owned[to].length;
+            // totalERC721OfOwner = erc20BalanceOf(to) / _getUnit();
+            mallableNumber = balanceBeforeReceiver / unit - _owned[to].length;
 
             uint256 tokensToMint = (balanceOf[to] / unit) - (balanceBeforeReceiver / unit);
-            for (uint256 i = 0; i < tokensToMint; i++) {
-                _mint(to);
-            }
-            for (uint256 i = mallableNumber + 1; tokensToMint == 0; i++) {
-                if (solidified[from][i] == 0) {
-                    tokensToMint--;
-                    emit Transfer(address(0), to, i);
+
+            if (tokensToMint > 0) {
+                for (uint256 i = mallableNumber; tokensToMint > 0; i++) {
+                    if (solidified[to].length == 0 || solidified[to][i] == 0) {
+                        tokensToMint--;
+                        emit Transfer(address(0), to, encodeOwnerAndId(to, i));
+                    }
                 }
             }
         }
