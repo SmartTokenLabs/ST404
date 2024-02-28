@@ -1,0 +1,17 @@
+{
+	"rules": {
+		"no-unused-vars": "error",
+		"const-name-snakecase": "error",
+		"contract-name-camelcase": "error",
+		"event-name-camelcase": "error",
+		"func-name-mixedcase": "warn",
+		"func-param-name-mixedcase": "error",
+		"modifier-name-mixedcase": "error",
+		"private-vars-leading-underscore": "error",
+		"var-name-mixedcase": "error",
+		"imports-on-top": "error",
+		"max-line-length": "warn",
+		"avoid-suicide": "error",
+		"avoid-sha3": "warn"
+	}
+}
