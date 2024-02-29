@@ -267,7 +267,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
                     i--
                 ) {
                     // i - 1 because zero token ID exists
-                    if (!_solidified[from].contains(i - 1)) {
+                    if (!_solidified[from].contains(encodeOwnerAndId(from,i - 1))) {
                         tokensToBurn--;
                         emit Transfer(from, address(0), encodeOwnerAndId(from, i - 1));
                     }
@@ -283,10 +283,11 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             mallableNumber = balanceBeforeReceiver / unit - _owned[to].length;
 
             uint256 tokensToMint = (balanceOf[to] / unit) - (balanceBeforeReceiver / unit);
-
+            bool check;
             if (tokensToMint > 0) {
                 for (uint256 i = mallableNumber; tokensToMint > 0; i++) {
-                    if (!_solidified[to].contains(i)) {
+                    check = _solidified[to].contains( encodeOwnerAndId(to, i));
+                    if (!check) {
                         tokensToMint--;
                         emit Transfer(address(0), to, encodeOwnerAndId(to, i));
                     }

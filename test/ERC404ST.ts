@@ -125,29 +125,59 @@ describe('ERC404ST', function () {
       await expect(erc404st.connect(w1).transfer(owner.address, 1)).to.emit(erc404st, "Transfer").withArgs(w1.address, ethers.ZeroAddress, tokenId);
     });
 
+    it('Solidified owner', async function () {
+      const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0)
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
+      await erc404st.connect(w1).solidify(tokenId )
+      expect(await erc404st.ownerOf(tokenId)).to.eq(w1.address);
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId );
+      expect(await erc404st.ownerOf(tokenId)).to.eq(w2.address);
+    });
+
     it('Unsolidify by other wallet', async function () {
       const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0)
-      // await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
-      // await erc404st.connect(w1).solidify(tokenId )
-      // await expect(erc404st.connect(w1).transfer(owner.address, 1)).to.be.revertedWith("unsolidify tokens before transfer erc20");
-      // await expect(erc404st.connect(w1).unSolidify(tokenId )).to.emit(erc404st, "UnSolidified").withArgs(tokenId, w1.address);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
+      await erc404st.connect(w1).solidify(tokenId )
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId );
+      let tokenId2 = await erc404st.encodeOwnerAndId(w2.address, 0)
+      expect(await erc404st.connect(w2).unSolidify(tokenId)).to
+        .emit(erc404st, "UnSolidified").withArgs(tokenId, w2.address)
+        .emit(erc404st, "Transfer").withArgs( w2.address, ethers.ZeroAddress, tokenId)
+        .emit(erc404st, "Transfer").withArgs( ethers.ZeroAddress, w2.address, tokenId2)
     });
 
     it('Solidify by transfer', async function () {
       const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0)
-      // await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
-      // await erc404st.connect(w1).solidify(tokenId )
-      // await expect(erc404st.connect(w1).transfer(owner.address, 1)).to.be.revertedWith("unsolidify tokens before transfer erc20");
-      // await expect(erc404st.connect(w1).unSolidify(tokenId )).to.emit(erc404st, "UnSolidified").withArgs(tokenId, w1.address);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
+      await expect(erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId)).to
+        .emit(erc404st, "Transfer").withArgs(w1.address, w2.address, tokenId)
+        .emit(erc404st, "Solidified").withArgs(tokenId, w1.address)
+      expect (await erc404st.solidifiedTotal(w1.address)).to.eq(1) 
+      expect (await erc404st.ownedTotal(w2.address)).to.eq(1)
+    });
+
+    it('ERC20 moved with ERC721', async function () {
+      const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0)
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
+      expect (await erc404st.erc20BalanceOf(w1.address)).to.eq(10n**decimals) 
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId)
+      expect (await erc404st.erc20BalanceOf(w1.address)).to.eq(0) 
+      expect (await erc404st.erc20BalanceOf(w2.address)).to.eq(10n**decimals) 
     });
 
     it('Mint when NFT#2 Solidified. make sure ID reserved', async function () {
       const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
-      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0)
-      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
-      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * 10n**decimals );
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 1)
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId)
+
+      tokenId = await erc404st.encodeOwnerAndId(w1.address, 2)
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals )).to
+      .emit(erc404st, "Transfer").withArgs( ethers.ZeroAddress, w1.address, tokenId);
     });
 
     it('Solidify second NFT', async function () {
