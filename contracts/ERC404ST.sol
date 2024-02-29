@@ -22,17 +22,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
     /// @dev TokenId packed next way: bit 0 == 1 when its a tokenID, bit 1 - bit 160 - walletAddress, which minted the token, bit 161 - 255 - sequence number of mallable token in wallet
 
-    /// @dev Address bitmask for packed ownership data
-    uint256 private constant _BITMASK_ADDRESS = (1 << 160) - 1;
-
-    /// @dev Owned index bitmask for packed ownership data
-    uint256 private constant _BITMASK_OWNED_INDEX = ((1 << 96) - 1) << 160;
-
-    /// HIGHEST bit to mark tokenId vs amount
-    uint256 private constant _ID_BIT = 1 << 255;
-
-    // TODO test it
-    uint256 private constant _MAX_MALLABLE_ID = (1 << 95) - 1;
+    uint256 private constant _MAX_AMOUNT = (1 << 96) - 1;
 
     function _authorizeSetScripts(string[] memory) internal override onlyOwner {}
 
@@ -107,25 +97,21 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     }
 
     function _encodeOwnerAndId(address owner, uint mallableId) internal pure returns (uint id) {
-        require(mallableId < _MAX_MALLABLE_ID, "Too high mallable ID");
-        id = ((uint256(uint160(owner)) & _BITMASK_ADDRESS) << 95) | _ID_BIT | mallableId;
+        require(mallableId < _MAX_AMOUNT, "Too high mallable ID");
+        id = ((uint256(uint160(owner))) << 96) | mallableId;
     }
 
     // TODO remove
     function decodeOwnerAndId(uint id) public pure returns (address owner, uint mallableId) {
-        if (id < _ID_BIT) {
-            revert("Invalid token ID");
-        }
-        mallableId = id & _MAX_MALLABLE_ID;
-        owner = address(uint160((id >> 95) & _BITMASK_ADDRESS));
+        (owner, mallableId) = _decodeOwnerAndId(id);
     }
 
     function _decodeOwnerAndId(uint id) internal pure returns (address owner, uint mallableId) {
-        if (id < _ID_BIT) {
+        if (id < _MAX_AMOUNT) {
             revert("Invalid token ID");
         }
-        mallableId = id & _MAX_MALLABLE_ID;
-        owner = address(uint160((id >> 95) & _BITMASK_ADDRESS));
+        mallableId = id & _MAX_AMOUNT;
+        owner = address(uint160((id >> 96)));
     }
 
     function _getMallableOwner(uint id_) internal view returns (address) {
@@ -168,7 +154,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     /// @notice Function for mixed transfers
     /// @dev This function assumes id / native if amount less than or equal to current max id
     function transferFrom(address from, address to, uint256 amountOrId) public virtual override {
-        if (amountOrId > _ID_BIT) {
+        if (amountOrId > _MAX_AMOUNT) {
             address ownedOwner = _ownerOf[amountOrId];
             if (ownedOwner == address(0)) {
                 address mallableOwner = _getMallableOwner(amountOrId);
@@ -230,7 +216,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
     /// @notice Internal function for fractional transfers (erc20)
     function _transfer(address from, address to, uint256 amount) internal override returns (bool) {
-        require(amount < _ID_BIT, "Its ID, not amount");
+        require(amount < _MAX_AMOUNT, "Its ID, not amount");
         uint256 unit = _getUnit();
         uint256 balanceBeforeSender = balanceOf[from];
         if (balanceBeforeSender < amount) {
