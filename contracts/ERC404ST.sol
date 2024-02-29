@@ -3,16 +3,21 @@ pragma solidity ^0.8.0;
 
 import {ERC404Legacy} from "./ERC404Legacy.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+
 import {ERC5169} from "stl-contracts/ERC/ERC5169.sol";
+// import {console} from "hardhat/console.sol";
 
 // nuance - user can't transfer to other account and back ERC20
 // tokens to generate new NFTs. User Address has solid predictable NFT list
 
 contract ERC404ST is ERC5169, ERC404Legacy {
+    using EnumerableSet for EnumerableSet.UintSet;
+
     // save list of ERC721 tokens to stay them solid, block from spliting to ERC20
     // list of own Solidified tokens
     // owner -> ids[]
-    mapping(address => uint256[]) public solidified;
+    mapping(address => EnumerableSet.UintSet) private _solidified;
     // list of Solidified tokens, sent to other accounts
     // owner -> ids[]
     mapping(address => uint256[]) public ownSentSolidified;
@@ -20,9 +25,12 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     // owner -> ids[]
     mapping(address => uint256[]) public receivedSolidified;
 
-    /// @dev TokenId packed next way: bit 0 == 1 when its a tokenID, bit 1 - bit 160 - walletAddress, which minted the token, bit 161 - 255 - sequence number of mallable token in wallet
+    /// @dev TokenId packed next way: [address ¹⁶⁰] [sequentialID⁹⁶] bit 1 - bit 160 - walletAddress, which minted the token, bit 161 - 256 - sequence number of minted token in wallet
 
     uint256 private constant _MAX_AMOUNT = (1 << 96) - 1;
+
+    event Solidified(uint tokenId, address requestor);
+    event UnSolidified(uint tokenId, address requestor);
 
     function _authorizeSetScripts(string[] memory) internal override onlyOwner {}
 
@@ -42,8 +50,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     }
 
     // add token to the solidified array
-    function solidify(uint id) public {
-        // msg.sender must be an owner or approved
+    function solidify(uint256 id) public {
         if (_ownerOf[id] != address(0)) {
             revert("Already solidified");
         }
@@ -51,7 +58,13 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         if (owner == address(0)) {
             revert("Token doesnt exists");
         }
-        solidified[owner][id] = 1;
+
+        if (owner != msg.sender) {
+            // TODO check if owner is approved
+            revert("Not owner nor approved");
+        }
+        _solidified[owner].add(id);
+        emit Solidified(id, msg.sender);
 
         _ownerOf[id] = msg.sender;
 
@@ -59,6 +72,14 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         _owned[msg.sender].push(id);
         // update index for to owned
         _ownedIndex[id] = _owned[msg.sender].length - 1;
+    }
+
+    function solidifiedTotal(address addr) public view returns (uint256) {
+        return _solidified[addr].length();
+    }
+
+    function ownedTotal(address addr) public view returns (uint256) {
+        return _owned[addr].length;
     }
 
     // remove token to the solidified array
@@ -70,7 +91,8 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             revert("Not solidified");
         }
 
-        solidified[msg.sender][id] = 0;
+        _solidified[msg.sender].remove(id);
+        emit UnSolidified(id, msg.sender);
 
         uint index = _ownedIndex[id];
         if (index != _owned[msg.sender].length - 1) {
@@ -80,7 +102,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         delete _ownedIndex[id];
         delete _ownerOf[id];
 
-        (address owner, uint id) = _decodeOwnerAndId(id);
+        (address owner, ) = _decodeOwnerAndId(id);
         if (owner != currentOwner) {
             // tokenId will be changed, so need to clear getApproved for current tokenId
             delete getApproved[id];
@@ -115,7 +137,6 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     }
 
     function _getMallableOwner(uint id_) internal view returns (address) {
-        // get owner by tokenID
         (address owner, uint id) = _decodeOwnerAndId(id_);
 
         uint mallableNumber = erc20BalanceOf(owner) / _getUnit() - _owned[owner].length;
@@ -125,9 +146,8 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         }
 
         uint mallableCounter = 0;
-        // we have "id" and owner
         for (uint i = 0; i <= id; ++i) {
-            if (solidified[owner][i] == 0) {
+            if (_solidified[owner].contains(i)) {
                 mallableCounter++;
             }
         }
@@ -139,7 +159,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     }
 
     function ownerOf(uint256 id_) public view override returns (address) {
-        // check if id_ is owned by erc721 (solified)
+        // TODO check if id_ is owned by erc721 (solified)
         address erc721owner = _ownerOf[id_];
         if (erc721owner != address(0)) {
             return erc721owner;
@@ -216,7 +236,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
     /// @notice Internal function for fractional transfers (erc20)
     function _transfer(address from, address to, uint256 amount) internal override returns (bool) {
-        require(amount < _MAX_AMOUNT, "Its ID, not amount");
+        require(amount <= _MAX_AMOUNT, "Its ID, not amount");
         uint256 unit = _getUnit();
         uint256 balanceBeforeSender = balanceOf[from];
         if (balanceBeforeSender < amount) {
@@ -232,7 +252,6 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
         uint totalERC721OfOwner = balanceBeforeSender / unit;
         uint mallableNumber = totalERC721OfOwner - _owned[from].length;
-
         // Skip burn for certain addresses to save gas
         if (!whitelist[from]) {
             // have to emit Transfer event for OpenSea and other services
@@ -243,12 +262,12 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             // start from number of tokens + number of solidified tokens - balance
             if (tokensToBurn > 0) {
                 for (
-                    uint256 i = totalERC721OfOwner + solidified[from].length - _owned[from].length;
+                    uint256 i = totalERC721OfOwner + _solidified[from].length() - _owned[from].length;
                     tokensToBurn > 0;
                     i--
                 ) {
                     // i - 1 because zero token ID exists
-                    if (solidified[from].length == 0 || solidified[from][i - 1] == 0) {
+                    if (!_solidified[from].contains(i - 1)) {
                         tokensToBurn--;
                         emit Transfer(from, address(0), encodeOwnerAndId(from, i - 1));
                     }
@@ -267,7 +286,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
             if (tokensToMint > 0) {
                 for (uint256 i = mallableNumber; tokensToMint > 0; i++) {
-                    if (solidified[to].length == 0 || solidified[to][i] == 0) {
+                    if (!_solidified[to].contains(i)) {
                         tokensToMint--;
                         emit Transfer(address(0), to, encodeOwnerAndId(to, i));
                     }
