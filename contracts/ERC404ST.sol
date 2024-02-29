@@ -109,10 +109,6 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         }
     }
 
-    function erc20BalanceOf(address owner_) public view virtual returns (uint256) {
-        return balanceOf[owner_];
-    }
-
     // TODO remove
     function encodeOwnerAndId(address owner, uint mallableId) public pure returns (uint id) {
         return _encodeOwnerAndId(owner, mallableId);
@@ -139,7 +135,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     function _getMallableOwner(uint id_) internal view returns (address) {
         (address owner, uint id) = _decodeOwnerAndId(id_);
 
-        uint mallableNumber = erc20BalanceOf(owner) / _getUnit() - _owned[owner].length;
+        uint mallableNumber = balanceOf[owner] / _getUnit() - _owned[owner].length;
 
         if (mallableNumber == 0) {
             return address(0);
@@ -277,9 +273,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
         // Skip minting for certain addresses to save gas
         if (!whitelist[to]) {
-            // have to emit Transfer event for OpenSea and other services
-
-            // totalERC721OfOwner = erc20BalanceOf(to) / _getUnit();
+            // emit Transfer event for OpenSea and other services
             mallableNumber = balanceBeforeReceiver / unit - _owned[to].length;
 
             uint256 tokensToMint = (balanceOf[to] / unit) - (balanceBeforeReceiver / unit);

@@ -52,7 +52,7 @@ describe('ERC404ST', function () {
     it('Detect owner balance after deploy', async function () {
       const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
 
-      expect (await erc404st.erc20BalanceOf(owner.address)).to.eq(1000n * 10n**decimals);
+      expect (await erc404st.balanceOf(owner.address)).to.eq(1000n * 10n**decimals);
 
     });
 
@@ -163,10 +163,10 @@ describe('ERC404ST', function () {
       const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0)
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
-      expect (await erc404st.erc20BalanceOf(w1.address)).to.eq(10n**decimals) 
+      expect (await erc404st.balanceOf(w1.address)).to.eq(10n**decimals) 
       await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId)
-      expect (await erc404st.erc20BalanceOf(w1.address)).to.eq(0) 
-      expect (await erc404st.erc20BalanceOf(w2.address)).to.eq(10n**decimals) 
+      expect (await erc404st.balanceOf(w1.address)).to.eq(0) 
+      expect (await erc404st.balanceOf(w2.address)).to.eq(10n**decimals) 
     });
 
     it('Mint when NFT#2 Solidified. make sure ID reserved', async function () {
@@ -187,10 +187,10 @@ describe('ERC404ST', function () {
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, 10n**decimals );
     });
 
-    it('Solidify by approved', async function () {
-      const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
-      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0)
-    });
+    // it('Solidify by approved', async function () {
+    //   const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
+    //   let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0)
+    // });
 
     it('UnSolidify by owner-minter', async function () {
       const { erc404st, owner, w1, w2, decimals } = await loadFixture(deployFixture);
