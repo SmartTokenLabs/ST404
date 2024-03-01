@@ -43,9 +43,11 @@ This structuring aims to provide a clearer understanding for developers on how S
 - **Outcomes**:
   1. The call reverts, as ERC721 has no transfer function and the user intends to transfer a ERC721 token.
 
-### Accumlication doesn't lead to newly minted toknes being stored.
+### Accumulation Without Storing Newly Minted Tokens
 
-In ERC404, when the user accumliated a whole unit of token, a token is minted for him by altering the storage `_owned` and `_ownedData`. However, in this contract, the mint event happens but the storage is not altered. Instead, the contract knows a new token would be minted and can deduce its existence. Similarly, if a user spends half of a unit of a token by ERC20 transfer, the token is not burned, unless there are not enough mellable tokens and the solidified ones has to be transferred, in this case it is `unsolidified` first, before it is transfrred out. this effectiely burns the token.
+In ST404, unlike ERC404, the accumulation of tokens leading to a full unit of a token does not result in a change to the storage variables `_owned` and `_ownedData` to reflect a minted token. Although a mint event is produced in such case, the storage remains unaltered. The contract acknowledges the minting of a new token and deduces its presence without needing to modify storage. Conversely, when a user spends half a unit of a token via an ERC20 transfer, as long as the underlying token is malleable, `_owned` and `_ownedData` undergoes no change despite a burn event is produced.
+
+A token only undergoes the actual burning process, altering `_owned` and `_ownedData`, when it needs to be "fracturised" due to insufficient malleable tokens for a transfer, necessitating the use of solidified tokens. Before such a solidified token is transferred out, it is "unsolidified," effectively burning it - only if it is fractionated, not when a whole token is transferred. This nuanced approach ensures that the logic of token states — malleable, solidified, and their transitions — aligns with the token's lifecycle and user transactions.
 
 ## Getting Started
 
