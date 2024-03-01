@@ -26,24 +26,26 @@ Using Alice's token transfer to Bob as an example, suppose Alice has one unit of
 #### ERC20 Transfer:
 - **Action**: Alice executes `transfer(bob, 100000000)` to send 1 unit (assuming 8 decimals) to Bob.
 - **Outcomes**:
-  1. An ERC20 event records the token transfer from Alice to Bob.
-  2. ERC721 compatibility events for burning Alice's token and minting a new one for Bob occur without altering storage, leaving `_owned` and `_ownedData` mappings unchanged.
-  3. Now Bob has one token, whose id is Bob's address followed by ...0001. This is again deduced and not stored.
+  1. ERC721 compatibility events for burning Alice's token and minting a new one for Bob occur without altering storage, leaving `_owned` and `_ownedData` mappings unchanged.
+  2. Now Bob has one token, whose id is Bob's address followed by ...0001. This is again deduced and not stored.
 
 #### ERC721 Transfer:
 - **Action**: Alice uses `transferFrom(alice, bob, 0x8964896489648964896489648964896489648964....0001)` for direct token transfer.
 - **Outcomes**:
-  1. An ERC20 event logs the unit transfer from Alice to Bob.
-  2. An ERC721 event signifies the specific token's transfer, affecting both `_owned` and `_ownedData` mappings
-  3. Alice now has one less malleable token, while Bob has one more solidified tokens.
+  1. An ERC721 event signifies the specific token's transfer, affecting both `_owned` and `_ownedData` mappings
+  2. Alice now has one less malleable token, while Bob has one more solidified tokens.
 
-This structuring aims to provide a clearer understanding for developers on how ST404 balances between token malleability and efficiency, highlighting the system's nuanced operations.
+This structuring aims to provide a clearer understanding for developers on how ST404 balances between token malleability and efficiency, highlighting the system's nuanced operations. Note in all case we don't produce ERC20 transfer events, even if it happened, in order to stay compatible with opensea.
 
 #### Force transfer ERC721 with ERC20 interface:
 
 - **Action**: Alice executes `transfer(bob, 0x8964896489648964896489648964896489648964....0001)` to send 1 unit (assuming 8 decimals) to Bob.
 - **Outcomes**:
   1. The call reverts, as ERC721 has no transfer function and the user intends to transfer a ERC721 token.
+
+### Accumlication doesn't lead to newly minted toknes being stored.
+
+In ERC404, when the user accumliated a whole unit of token, a token is minted for him by altering the storage `_owned` and `_ownedData`. However, in this contract, the mint event happens but the storage is not altered. Instead, the contract knows a new token would be minted and can deduce its existence. Similarly, if a user spends half of a unit of a token by ERC20 transfer, the token is not burned, unless there are not enough mellable tokens and the solidified ones has to be transferred, in this case it is `unsolidified` first, before it is transfrred out. this effectiely burns the token.
 
 ## Getting Started
 
