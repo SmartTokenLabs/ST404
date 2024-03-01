@@ -21,7 +21,7 @@ ST404 introduces an innovative token standard that builds upon the ERC404 works,
 
 ### Malleability Versus Solidification
 
-Using Alice's token transfer to Bob as an example, suppose Alice has one unit of token, normally, its ID is its address followed by token index. So if her address is 0x8964...8964, the token ID is 0x8964896489648964896489648964896489648964....0001. This ID is deduced and not stored in the contract. Let's differentiate between ERC20 and ERC721 transfers:
+Using Alice's token transfer to Bob as an example, suppose Alice has one unit of token, normally, its ID is its address followed by token index. So if her address is `0x8964...8964``, the token ID is `0x8964896489648964896489648964896489648964....0001``. This ID is deduced and not stored in the contract. Let's differentiate between ERC20 and ERC721 transfers:
 
 #### ERC20 Transfer:
 - **Action**: Alice executes `transfer(bob, 100000000)` to send 1 unit (assuming 8 decimals) to Bob.
@@ -38,6 +38,12 @@ Using Alice's token transfer to Bob as an example, suppose Alice has one unit of
   3. Alice now has one less malleable token, while Bob has one more solidified tokens.
 
 This structuring aims to provide a clearer understanding for developers on how ST404 balances between token malleability and efficiency, highlighting the system's nuanced operations.
+
+#### Force transfer ERC721 with ERC20 interface:
+
+- **Action**: Alice executes `transfer(bob, 0x8964896489648964896489648964896489648964....0001)` to send 1 unit (assuming 8 decimals) to Bob.
+- **Outcomes**:
+  1. The call reverts, as ERC721 has no transfer function and the user intends to transfer a ERC721 token.
 
 ## Getting Started
 
