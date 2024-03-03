@@ -1,5 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+import {console} from "hardhat/console.sol";
 
 abstract contract Ownable {
   event OwnershipTransferred(address indexed user, address indexed newOwner);
@@ -110,7 +111,7 @@ abstract contract ERC404Legacy is Ownable {
 
   // Mappings
   /// @dev Balance of user in fractional representation
-  mapping(address => uint256) public balanceOf;
+  mapping(address => uint256) internal _balanceOf;
 
   /// @dev Allowance of user in fractional representation
   mapping(address => mapping(address => uint256)) public allowance;
@@ -192,6 +193,7 @@ abstract contract ERC404Legacy is Ownable {
 
   /// @notice Function native approvals
   function setApprovalForAll(address operator, bool approved) public virtual {
+    console.log("setApprovalForAll", msg.sender, operator);
     isApprovedForAll[msg.sender][operator] = approved;
 
     emit ApprovalForAll(msg.sender, operator, approved);
@@ -221,10 +223,10 @@ abstract contract ERC404Legacy is Ownable {
         revert Unauthorized();
       }
 
-      balanceOf[from] -= _getUnit();
+      _balanceOf[from] -= _getUnit();
 
       unchecked {
-        balanceOf[to] += _getUnit();
+        _balanceOf[to] += _getUnit();
       }
 
       _ownerOf[amountOrId] = to;
@@ -301,19 +303,19 @@ abstract contract ERC404Legacy is Ownable {
     uint256 amount
   ) internal virtual returns (bool) {
     uint256 unit = _getUnit();
-    uint256 balanceBeforeSender = balanceOf[from];
-    uint256 balanceBeforeReceiver = balanceOf[to];
+    uint256 balanceBeforeSender = _balanceOf[from];
+    uint256 balanceBeforeReceiver = _balanceOf[to];
 
-    balanceOf[from] -= amount;
+    _balanceOf[from] -= amount;
 
     unchecked {
-      balanceOf[to] += amount;
+      _balanceOf[to] += amount;
     }
 
     // Skip burn for certain addresses to save gas
     if (!whitelist[from]) {
       uint256 tokensToBurn = (balanceBeforeSender / unit) -
-        (balanceOf[from] / unit);
+        (_balanceOf[from] / unit);
       for (uint256 i = 0; i < tokensToBurn; i++) {
         _burn(from);
       }
@@ -321,7 +323,7 @@ abstract contract ERC404Legacy is Ownable {
 
     // Skip minting for certain addresses to save gas
     if (!whitelist[to]) {
-      uint256 tokensToMint = (balanceOf[to] / unit) -
+      uint256 tokensToMint = (_balanceOf[to] / unit) -
         (balanceBeforeReceiver / unit);
       for (uint256 i = 0; i < tokensToMint; i++) {
         _mint(to);
