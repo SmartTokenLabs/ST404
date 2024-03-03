@@ -225,13 +225,36 @@ describe('ERC404ST', function () {
         .withArgs(w1.address, ethers.ZeroAddress, tokenId_w1_1)
         .emit(erc404st, 'ERC20Transfer')
         .withArgs(w1.address, ethers.ZeroAddress, oneERC20);
-      await expect( erc404st.ownerOf(tokenId_w1_1))
-        .to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWith('Token not found');
 
       expect(await erc404st.balanceOf(w1.address)).to.eq(oneERC20);
     });
 
-    it('Burn ERC20 + Burn first solidified ERC721', async function () {});
+    it('Burn ERC20 + Burn first solidified ERC721', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+      let tokenId_w1_1 = await erc404st.encodeOwnerAndId(w1.address, 1);
+
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId_w1_0);
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId_w1_1);
+      expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w2.address);
+      expect(await erc404st.ownerOf(tokenId_w1_1)).to.eq(w2.address);
+      expect(await erc404st.ownedTotal(w2.address)).to.eq(2);
+      expect(await erc404st.getOwned(w2.address, 0)).to.eq(tokenId_w1_0);
+      expect(await erc404st.getOwned(w2.address, 1)).to.eq(tokenId_w1_1);
+      expect(await erc404st.ownedTotal(w2.address)).to.eq(2);
+      await expect(erc404st.connect(w2).burn(oneERC20))
+      .to.emit(erc404st, 'Transfer')
+      .withArgs(w2.address, ethers.ZeroAddress, tokenId_w1_0)
+      .emit(erc404st, 'ERC20Transfer')
+      .withArgs(w2.address, ethers.ZeroAddress, oneERC20);
+      expect(await erc404st.ownedTotal(w2.address)).to.eq(1);
+
+      await expect(erc404st.ownerOf(tokenId_w1_0)).to.revertedWith('Token not found');
+
+      expect(await erc404st.balanceOf(w2.address)).to.eq(oneERC20);
+    });
   });
 
   /*

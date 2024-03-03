@@ -112,7 +112,6 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         } else {
             return address(0);
         }
-        
     }
 
     function _calcBalanceOf(address owner) internal view returns (uint256) {
@@ -133,9 +132,13 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         uint numberOfExistingMalleables = erc721balanceOf(owner) - _owned[owner].length;
 
         // -1 because we start from 0
-        if (numberOfExistingMalleables == 0 || id > (numberOfExistingMalleables + _solidified[owner].length() - 1 ) || address(0) != _ownerOf[fullId]) {
+        if (
+            numberOfExistingMalleables == 0 ||
+            id > (numberOfExistingMalleables + _solidified[owner].length() - 1) ||
+            address(0) != _ownerOf[fullId]
+        ) {
             return false;
-        } 
+        }
         if (_solidified[owner].contains(fullId)) {
             return false;
         }
@@ -148,11 +151,18 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         if (erc721owner != address(0)) {
             return erc721owner;
         }
-        address mallableOwner = _getMallableOwner(id_);
-        if (mallableOwner != address(0)) {
-            return mallableOwner;
+        if (!_isSolidified(id_)) {
+            address mallableOwner = _getMallableOwner(id_);
+            if (mallableOwner != address(0)) {
+                return mallableOwner;
+            }
         }
         revert("Token not found");
+    }
+
+    function _isSolidified(uint id) internal view returns (bool) {
+        (address owner, ) = _decodeOwnerAndId(id);
+        return _solidified[owner].contains(id);
     }
 
     function _setOwned(uint tokenId, address owner) internal {
@@ -202,7 +212,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         }
         emit ERC20Transfer(from, to, amount);
     }
-    
+
     function burn(uint tokenIdOrAmount) public {
         if (tokenIdOrAmount <= _MAX_AMOUNT) {
             _burnERC20(tokenIdOrAmount);
@@ -242,7 +252,6 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             _balanceOf[owner] -= _getUnit();
         }
         emit ERC20Transfer(owner, address(0), _getUnit());
-
     }
 
     function _checkAuthorized(address owner, address spender, uint256 tokenId) internal view {
@@ -268,11 +277,10 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
     /// @notice Internal function for fractional transfers (erc20)
     function _transfer(address from, address to, uint256 amount) internal override returns (bool) {
-        return _detectAndHandleTransfer(from, to, amount);        
+        return _detectAndHandleTransfer(from, to, amount);
     }
 
     function _transferERC721(address from, address to, uint tokenId) internal returns (bool) {
-        
         address ownedOwner = _ownerOf[tokenId];
         if (ownedOwner == address(0)) {
             address owner = _getMallableOwner(tokenId);
@@ -285,7 +293,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             if (from != ownedOwner) {
                 revert InvalidSender();
             }
-            
+
             if (to == address(0)) {
                 _burnERC721(tokenId);
             } else {
@@ -295,7 +303,6 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
             return true;
         }
-        
     }
 
     function _maybeDecreaseERC20Allowance(address spender, uint256 amountOrId) internal {
@@ -306,13 +313,12 @@ contract ERC404ST is ERC5169, ERC404Legacy {
                 revert("Not allowed to transfer");
             }
 
-            // if (allowed != type(uint256).max) 
+            // if (allowed != type(uint256).max)
             allowance[spender][msg.sender] = allowed - amountOrId;
             console.log("allowance from", allowance[spender][msg.sender]);
             console.log("allowance to", allowance[spender][msg.sender]);
             console.log("allowance decreased amount", amountOrId, "result", allowance[spender][msg.sender]);
         }
-        
     }
 
     function _transferERC20(address from, address to, uint amount) internal returns (bool) {
@@ -328,7 +334,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         if (to != address(0)) {
             unchecked {
                 _balanceOf[to] += amount;
-            } 
+            }
         }
 
         uint totalERC721OfOwner = balanceBeforeSender / unit;
@@ -337,9 +343,12 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         if (!whitelist[from]) {
             // have to emit Transfer event for OpenSea and other services
             uint256 tokensToBurn = (balanceBeforeSender / unit) - (_balanceOf[from] / unit);
+            uint ownedTokensToBurn;
             if (tokensToBurn > mallableNumber) {
-                revert("unsolidify tokens before transfer erc20");
+                ownedTokensToBurn = tokensToBurn - mallableNumber;
+                tokensToBurn = mallableNumber;
             }
+
             // start from number of tokens + number of solidified tokens - balance
             if (tokensToBurn > 0) {
                 for (
@@ -348,10 +357,25 @@ contract ERC404ST is ERC5169, ERC404Legacy {
                     i--
                 ) {
                     // i - 1 because zero token ID exists
-                    if (!_solidified[from].contains(encodeOwnerAndId(from,i - 1))) {
+                    if (!_solidified[from].contains(encodeOwnerAndId(from, i - 1))) {
                         tokensToBurn--;
                         emit Transfer(from, address(0), encodeOwnerAndId(from, i - 1));
                     }
+                }
+            }
+
+            if (ownedTokensToBurn > 0) {
+                while (ownedTokensToBurn > 0) {
+                    // update _owned for sender
+                    emit Transfer(from, address(0), _owned[from][0]);
+
+                    uint256 lastId = _owned[from][_owned[from].length - 1];
+                    delete _ownerOf[_owned[from][0]];
+                    _owned[from][0] = lastId;
+                    _owned[from].pop();
+                    // update index for to owned
+                    _ownedIndex[lastId] = 0;
+                    ownedTokensToBurn--;
                 }
             }
         }
@@ -365,7 +389,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             bool check;
             if (tokensToMint > 0) {
                 for (uint256 i = mallableNumber; tokensToMint > 0; i++) {
-                    check = _solidified[to].contains( encodeOwnerAndId(to, i));
+                    check = _solidified[to].contains(encodeOwnerAndId(to, i));
                     if (!check) {
                         tokensToMint--;
                         emit Transfer(address(0), to, encodeOwnerAndId(to, i));
@@ -379,40 +403,35 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     }
 
     /// @notice Function for token approvals
-  /// @dev This function assumes id / native if amount less than or equal to current max id
-  function approve(
-    address spender,
-    uint256 amountOrId
-  ) public virtual override returns (bool) {
-    if (amountOrId > _MAX_AMOUNT) {
-      address owner = _ownerOf[amountOrId];
+    /// @dev This function assumes id / native if amount less than or equal to current max id
+    function approve(address spender, uint256 amountOrId) public virtual override returns (bool) {
+        if (amountOrId > _MAX_AMOUNT) {
+            address owner = _ownerOf[amountOrId];
 
-      if (owner == address(0)) {
-        owner = _getMallableOwner(amountOrId);
-      } 
-      if (owner == address(0)) {
-        revert("Token to approve doesnt exists");
-      } 
+            if (owner == address(0)) {
+                owner = _getMallableOwner(amountOrId);
+            }
+            if (owner == address(0)) {
+                revert("Token to approve doesnt exists");
+            }
 
-      if (msg.sender != owner && !isApprovedForAll[owner][msg.sender]) {
-        // console.log(msg.sender != owner, !isApprovedForAll[owner][msg.sender]);
-        // console.log(owner, msg.sender);
-        revert Unauthorized();
-      }
+            if (msg.sender != owner && !isApprovedForAll[owner][msg.sender]) {
+                // console.log(msg.sender != owner, !isApprovedForAll[owner][msg.sender]);
+                // console.log(owner, msg.sender);
+                revert Unauthorized();
+            }
 
-      getApproved[amountOrId] = spender;
+            getApproved[amountOrId] = spender;
 
-      emit Approval(owner, spender, amountOrId);
-    } else {
-      allowance[msg.sender][spender] = amountOrId;
+            emit Approval(owner, spender, amountOrId);
+        } else {
+            allowance[msg.sender][spender] = amountOrId;
 
-      emit Approval(msg.sender, spender, amountOrId);
+            emit Approval(msg.sender, spender, amountOrId);
+        }
+
+        return true;
     }
-
-    return true;
-  }
-
-
 }
 
 contract ERC404StDev is ERC404ST {
@@ -432,5 +451,9 @@ contract ERC404StDev is ERC404ST {
 
     function ownedTotal(address addr) public view returns (uint256) {
         return _owned[addr].length;
+    }
+
+    function getOwned(address addr, uint i) public view returns (uint256) {
+        return _owned[addr][i];
     }
 }
