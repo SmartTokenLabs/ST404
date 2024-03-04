@@ -14,7 +14,7 @@ describe('ST404', function () {
     const [deployer, owner, w1, w2, w3, w4] = await ethers.getSigners();
 
     const ST404 = (await ethers.getContractFactory('ERC404StDev')).connect(deployer);
-    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 1000, owner.address);
+    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 10000, owner.address);
 
     return { erc404st, owner, w1, w2, w3, w4 };
   }
@@ -28,14 +28,18 @@ describe('ST404', function () {
       
       // 'Show gas usage for transfer 10 ERC20'
       gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, 10n * oneERC20);
-      console.log(`Gas for 10 ERC20 transfer: ${gas} (10 Transfer events)`);
+      console.log(`Gas for 10 ERC20 transfer: ${gas} (10 Transfer events from owner)`);
 
       gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, 100n * oneERC20);
-      console.log(`Gas for 100 ERC20 transfer: ${gas} (100 Transfer events)`);
+      console.log(`Gas for 100 ERC20 transfer: ${gas} (100 Transfer events from owner)`);
 
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, 100n * oneERC20)
       gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, w2.address, 100n * oneERC20);
-      console.log(`Gas for 100 ERC20 transfer: ${gas} (100 Transfer events to another account)`);
+      console.log(`Gas for 100 ERC20 retransfer: ${gas} (100 Transfer events from a user account to another account)`);
+
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2900n * oneERC20)
+      gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, w2.address, 2900n * oneERC20);
+      console.log(`Gas for 2900 ERC20 retransfer: ${gas} (2900 Transfer events from a user account to another account)`);
       
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
       gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, w2.address, tokenId);
