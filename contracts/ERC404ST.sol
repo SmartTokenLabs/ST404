@@ -29,6 +29,10 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
     uint256 private constant _MAX_AMOUNT = (1 << 96) - 1;
 
+    // To maintain compatibility with ERC721, tokens that are not stored in
+    // storage still trigger the mint event when they first trasnferred into the
+    // user's address. Therefore, for clarity, the following two events are
+    // specifically provided when a token enters storage (_owned and _ownedData).
     event Solidified(address requestor, uint tokenId);
     event UnSolidified(address requestor, uint tokenId);
 
@@ -73,11 +77,11 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     }
 
     // TODO remove, only for testing
-    function getMallableOwner(uint id_) public view returns (address) {
-        return _getMallableOwner(id_);
+    function getMalleableOwner(uint id_) public view returns (address) {
+        return _getMalleableOwner(id_);
     }
 
-    function _getMallableOwner(uint id_) internal view returns (address) {
+    function _getMalleableOwner(uint id_) internal view returns (address) {
         (address owner, uint id) = _decodeOwnerAndId(id_);
 
         if (isMalleableExists(id, owner, id_)) {
@@ -125,7 +129,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             return erc721owner;
         }
         if (!_isSolidified(id_)) {
-            address mallableOwner = _getMallableOwner(id_);
+            address mallableOwner = _getMalleableOwner(id_);
             if (mallableOwner != address(0)) {
                 return mallableOwner;
             }
@@ -152,7 +156,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         emit Solidified(owner, id);
     }
 
-    function _transferMallable(address from, address to, uint tokenId) internal {
+    function _transferMalleable(address from, address to, uint tokenId) internal {
         _markSolidified(tokenId);
         _setOwned(tokenId, to);
         emit Transfer(from, to, tokenId);
@@ -255,16 +259,16 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         address ownedOwner = _ownerOf[tokenId];
         address nativeOwner;
         if (ownedOwner == address(0)) {
-            nativeOwner = getMallableOwner(tokenId);
+            nativeOwner = getMalleableOwner(tokenId);
 
-            // nativeOwner = _getMallableOwner(tokenId);
+            // nativeOwner = _getMalleableOwner(tokenId);
             if (nativeOwner == address(0)) {
                 revert("Token doesnt exists");
             }
             if (from != nativeOwner) {
                 revert InvalidSender();
             }
-            _transferMallable(nativeOwner, to, tokenId);
+            _transferMalleable(nativeOwner, to, tokenId);
             _doTransferERC20(from, to, _getUnit());
         } else {
             if (from != ownedOwner) {
@@ -403,7 +407,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             address owner = _ownerOf[amountOrId];
 
             if (owner == address(0)) {
-                owner = _getMallableOwner(amountOrId);
+                owner = _getMalleableOwner(amountOrId);
             }
             if (owner == address(0)) {
                 revert("Token to approve doesnt exists");
