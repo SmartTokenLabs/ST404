@@ -54,25 +54,25 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     // TODO remove
-    function encodeOwnerAndId(address owner, uint mallableId) public pure returns (uint id) {
-        return _encodeOwnerAndId(owner, mallableId);
+    function encodeOwnerAndId(address owner, uint malleableId) public pure returns (uint id) {
+        return _encodeOwnerAndId(owner, malleableId);
     }
 
-    function _encodeOwnerAndId(address owner, uint mallableId) internal pure returns (uint id) {
-        require(mallableId < _MAX_AMOUNT, "Too high mallable ID");
-        id = ((uint256(uint160(owner))) << 96) | mallableId;
+    function _encodeOwnerAndId(address owner, uint malleableId) internal pure returns (uint id) {
+        require(malleableId < _MAX_AMOUNT, "Too high mallable ID");
+        id = ((uint256(uint160(owner))) << 96) | malleableId;
     }
 
     // TODO remove
-    function decodeOwnerAndId(uint id) public pure returns (address owner, uint mallableId) {
-        (owner, mallableId) = _decodeOwnerAndId(id);
+    function decodeOwnerAndId(uint id) public pure returns (address owner, uint malleableId) {
+        (owner, malleableId) = _decodeOwnerAndId(id);
     }
 
-    function _decodeOwnerAndId(uint id) internal pure returns (address owner, uint mallableId) {
+    function _decodeOwnerAndId(uint id) internal pure returns (address owner, uint malleableId) {
         if (id < _MAX_AMOUNT) {
             revert("Invalid token ID");
         }
-        mallableId = id & _MAX_AMOUNT;
+        malleableId = id & _MAX_AMOUNT;
         owner = address(uint160((id >> 96)));
     }
 
