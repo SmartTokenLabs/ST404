@@ -16,6 +16,8 @@ ST404 introduces an innovative token standard that builds upon the ERC404 works,
 
 ## Design Details
 
+Please refer to [Case Study](CASESTUDY.md) for a low level detail scenario-based description.
+
 ### Deduced Existence vs. Physical Storage
 
 "NFTs' existence need not be stored if it can be logically deduced" captures ST404's philosophy. The system uniquely identifiesn most tokens using the combination of a user's address and a sequential index, negating the need for traditional storage mechanisms. This approach significantly enhances scalability and gas efficiency.

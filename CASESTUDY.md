@@ -1,6 +1,6 @@
 # CASE STUDY
 
-Here's a detailed scenario that encapsulates the token transformation and transfer process described in README:
+Here's a detailed scenario that encapsulates the token transformation and transfer process described in (README)[README.md]:
 
 1. **Initial State**:
    - Alice owns a unique ERC721 token identified as `0x89..64....0001`, where `0x89..64` is her wallet address.
