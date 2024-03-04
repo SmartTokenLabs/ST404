@@ -11,7 +11,7 @@ import {console} from "hardhat/console.sol";
 // nuance - user can't transfer to other account and back ERC20
 // tokens to generate new NFTs. User Address has solid predictable NFT list
 
-contract ERC404ST is ERC5169, ERC404Legacy {
+contract ST404 is ERC5169, ERC404Legacy {
     using EnumerableSet for EnumerableSet.UintSet;
 
     // save list of ERC721 tokens to stay them solid, block from spliting to ERC20
@@ -429,7 +429,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     }
 }
 
-contract ERC404StDev is ERC404ST {
+contract ERC404StDev is ST404 {
     using EnumerableSet for EnumerableSet.UintSet;
 
     constructor(
@@ -438,7 +438,7 @@ contract ERC404StDev is ERC404ST {
         uint8 _decimals,
         uint256 _totalNativeSupply,
         address _owner
-    ) ERC404ST(_name, _symbol, _decimals, _totalNativeSupply, _owner) {}
+    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner) {}
 
     function solidifiedTotal(address addr) public view returns (uint256) {
         return _solidified[addr].length();

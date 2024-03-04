@@ -35,8 +35,8 @@ async function main() {
   const decimals = 8n;
   const initialOwnerBalance = 100_000_000;;
 
-  const ERC404ST = (await ethers.getContractFactory('ERC404ST')).connect(admin);
-  const erc404st = await ERC404ST.deploy('Token', 'TKN', decimals, initialOwnerBalance, admin.address);
+  const ST404 = (await ethers.getContractFactory('ST404')).connect(admin);
+  const erc404st = await ST404.deploy('Token', 'TKN', decimals, initialOwnerBalance, admin.address);
 
   await erc404st.waitForDeployment();
 
