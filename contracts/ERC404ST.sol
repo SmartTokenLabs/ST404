@@ -205,7 +205,6 @@ contract ERC404ST is ERC5169, ERC404Legacy {
 
     function _doTransferERC20(address from, address to, uint amount) internal {
         require(amount <= _balanceOf[from], "Not enough balance");
-        _maybeDecreaseERC20Allowance(from, amount);
         unchecked {
             _balanceOf[from] -= amount;
             _balanceOf[to] += amount;
@@ -258,10 +257,10 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         if (owner != spender && !isApprovedForAll[owner][spender] && spender != getApproved[tokenId]) {
             revert Unauthorized();
         }
+        // console.log("Allowed ERC721");
     }
 
     function _detectAndHandleTransfer(address from, address to, uint256 amountOrId) internal returns (bool) {
-        _checkAuthorized(from, msg.sender, amountOrId);
         require(from != address(0), "Minting not allowed");
         if (amountOrId > _MAX_AMOUNT) {
             return _transferERC721(from, to, amountOrId);
@@ -281,6 +280,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     }
 
     function _transferERC721(address from, address to, uint tokenId) internal returns (bool) {
+        _checkAuthorized(from, msg.sender, tokenId);
         address ownedOwner = _ownerOf[tokenId];
         if (ownedOwner == address(0)) {
             address owner = _getMallableOwner(tokenId);
@@ -310,32 +310,24 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             uint256 allowed = allowance[spender][msg.sender];
 
             if (allowed < amountOrId) {
-                revert("Not allowed to transfer");
+                revert Unauthorized();
             }
 
             // if (allowed != type(uint256).max)
             allowance[spender][msg.sender] = allowed - amountOrId;
-            console.log("allowance from", allowance[spender][msg.sender]);
-            console.log("allowance to", allowance[spender][msg.sender]);
-            console.log("allowance decreased amount", amountOrId, "result", allowance[spender][msg.sender]);
         }
     }
 
     function _transferERC20(address from, address to, uint amount) internal returns (bool) {
+        // _maybeDecreaseERC20Allowance(from, amount);
         uint256 unit = _getUnit();
         uint256 balanceBeforeSender = _balanceOf[from];
         if (balanceBeforeSender < amount) {
             revert("Insufficient balance");
         }
         uint256 balanceBeforeReceiver = _balanceOf[to];
-
-        _balanceOf[from] -= amount;
-
-        if (to != address(0)) {
-            unchecked {
-                _balanceOf[to] += amount;
-            }
-        }
+        _maybeDecreaseERC20Allowance(from, amount);
+        _doTransferERC20(from, to, amount);
 
         uint totalERC721OfOwner = balanceBeforeSender / unit;
         uint mallableNumber = totalERC721OfOwner - _owned[from].length;
@@ -414,10 +406,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             if (owner == address(0)) {
                 revert("Token to approve doesnt exists");
             }
-
             if (msg.sender != owner && !isApprovedForAll[owner][msg.sender]) {
-                // console.log(msg.sender != owner, !isApprovedForAll[owner][msg.sender]);
-                // console.log(owner, msg.sender);
                 revert Unauthorized();
             }
 

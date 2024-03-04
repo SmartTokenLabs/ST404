@@ -245,10 +245,10 @@ describe('ERC404ST', function () {
       expect(await erc404st.getOwned(w2.address, 1)).to.eq(tokenId_w1_1);
       expect(await erc404st.ownedTotal(w2.address)).to.eq(2);
       await expect(erc404st.connect(w2).burn(oneERC20))
-      .to.emit(erc404st, 'Transfer')
-      .withArgs(w2.address, ethers.ZeroAddress, tokenId_w1_0)
-      .emit(erc404st, 'ERC20Transfer')
-      .withArgs(w2.address, ethers.ZeroAddress, oneERC20);
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(w2.address, ethers.ZeroAddress, tokenId_w1_0)
+        .emit(erc404st, 'ERC20Transfer')
+        .withArgs(w2.address, ethers.ZeroAddress, oneERC20);
       expect(await erc404st.ownedTotal(w2.address)).to.eq(1);
 
       await expect(erc404st.ownerOf(tokenId_w1_0)).to.revertedWith('Token not found');
@@ -257,124 +257,153 @@ describe('ERC404ST', function () {
     });
   });
 
+  describe('Check owner', function () {
+    it('ownerOf first NFT', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await expect(erc404st.ownerOf(tokenId)).to.be.revertedWith('Token not found');
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      expect(await erc404st.ownerOf(tokenId)).to.eq(w1.address);
+      tokenId = await erc404st.encodeOwnerAndId(w1.address, 2);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      expect(await erc404st.ownerOf(tokenId)).to.eq(w1.address);
+    });
+
+    it('Mallable Owner non-existent', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await expect(erc404st.ownerOf(tokenId)).to.be.revertedWith('Token not found');
+    });
+
+    it('Owned Owner', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+      let tokenId_w1_1 = await erc404st.encodeOwnerAndId(w1.address, 1);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId_w1_0);
+      expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w2.address);
+      await expect(erc404st.ownerOf(tokenId_w1_1)).to.be.revertedWith('Token not found');
+    });
+  });
+
+  describe('Approved', function () {
+    it('Approve ERC20', async function () {
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20)).to.emit(
+        erc404st,
+        'Transfer',
+      );
+      await expect(erc404st.connect(w1).approve(w2.address, oneERC20))
+        .to.emit(erc404st, 'Approval')
+        .withArgs(w1.address, w2.address, oneERC20);
+      await expect(erc404st.connect(w2).transferFrom(w1.address, w3.address, 2n * oneERC20)).to.revertedWithCustomError(
+        erc404st,
+        'Unauthorized',
+      );
+      await expect(erc404st.connect(w2).transferFrom(w1.address, w3.address, oneERC20)).to.emit(erc404st, 'Transfer');
+      await expect(erc404st.connect(w2).transferFrom(w1.address, w3.address, oneERC20)).to.revertedWithCustomError(
+        erc404st,
+        'Unauthorized',
+      );
+      expect(await erc404st.balanceOf(w1)).to.eq(oneERC20);
+    });
+
+    it('Approve ERC721', async function () {
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w1.address);
+      await erc404st.connect(w1).approve(w2.address, tokenId_w1_0);
+      await erc404st.connect(w2).transferFrom(w1.address, w3.address, tokenId_w1_0);
+      expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w3.address);
+    });
+
+    it('Approve all', async function () {
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+      let tokenId_w1_1 = await erc404st.encodeOwnerAndId(w1.address, 1);
+      let tokenId_w1_2 = await erc404st.encodeOwnerAndId(w1.address, 2);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w1.address);
+      await erc404st.connect(w1).setApprovalForAll(w2.address, true);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      await erc404st.connect(w2).transferFrom(w1.address, w3.address, tokenId_w1_0);
+      await erc404st.connect(w2).transferFrom(w1.address, w3.address, tokenId_w1_2);
+      await erc404st.connect(w1).setApprovalForAll(w2.address, false);
+      await expect(erc404st.connect(w2).transferFrom(w1.address, w3.address, tokenId_w1_1)).to.revertedWithCustomError(
+        erc404st,
+        'Unauthorized',
+      );
+    });
+
+    it('Flush Approve on transfer', async function () {
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+
+      await erc404st.connect(w1).approve(w2.address, tokenId_w1_0);
+      await erc404st.connect(w2).transferFrom(w1.address, w3.address, tokenId_w1_0);
+      await erc404st.connect(w3).transferFrom(w3.address, w1.address, tokenId_w1_0);
+      await expect(erc404st.connect(w2).transferFrom(w1.address, w3.address, tokenId_w1_0)).to.revertedWithCustomError(
+        erc404st,
+        'Unauthorized',
+      );
+    });
+
+    it('ApproveForAll -> new Approval', async function () {
+      const { erc404st, owner, w1, w2, w3, w4 } = await loadFixture(deployFixture);
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+
+      await erc404st.connect(w1).setApprovalForAll(w2.address, true);
+      await erc404st.connect(w2).approve(w3.address, tokenId_w1_0);
+      await erc404st.connect(w3).transferFrom(w1.address, w4.address, tokenId_w1_0);
+    });
+  });
+
+  describe('Gas usage', function () {
+    it('Show gas usage for transfer 1 ERC20', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+
+    it('Show gas usage for transfer 10 ERC20', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+
+    it('Show gas usage for transfer 1000 ERC20', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+
+    it('Show gas usage for transfer 1 ERC721', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+
+    it('Show gas usage for transfer 1 ERC721 second time', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+
+    it('Show gas usage for transfer 10 ERC721', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+
+    it('Show gas usage for transfer 10 ERC721 second time', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+  });
+
   /*
     
 
-    describe('Check owner', function () {
-      it('Custom stop', () => expect(0).to.eq('Not implmented yet'));
-      it('ownerOf first NFT', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-        await expect(erc404st.ownerOf(tokenId)).to.be.revertedWith('Token not found');
-        await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
-        expect(await erc404st.ownerOf(tokenId)).to.eq(w1.address);
-        tokenId = await erc404st.encodeOwnerAndId(w1.address, 2);
-        await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
-        expect(await erc404st.ownerOf(tokenId)).to.eq(w1.address);
-      });
-
-      it('Mallable Owner non-existent', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Mallable Owner', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Owned Owner', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Owned Owner non-existent', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-    });
-
-    describe('Approved', function () {
-      it('Custom stop', () => expect(0).to.eq('Not implmented yet'));
-
-      it('Approve to transfer', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Approve to transfer all', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Approve ERC20', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Approve ERC721', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Approve All ERC20', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Approve all ERC721', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Flush Approve on transfer', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('ApproveForAll -> new Approval', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-    });
-
-    describe('Gas usage', function () {
-      it('Custom stop', () => expect(0).to.eq('Not implmented yet'));
-      it('Show gas usage for transfer 1 ERC20', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Show gas usage for transfer 10 ERC20', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Show gas usage for transfer 1000 ERC20', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Show gas usage for transfer 1 ERC721', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Show gas usage for transfer 1 ERC721 second time', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Show gas usage for transfer 10 ERC721', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Show gas usage for transfer 10 ERC721 second time', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-    });
+    
 
     describe('Events', function () {
       it('Custom stop', () => expect(0).to.eq('Not implmented yet'));
