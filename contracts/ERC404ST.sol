@@ -49,33 +49,6 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         return string.concat("https://to.be.changed.com/token/", Strings.toString(id_));
     }
 
-    // remove token to the solidified array
-    function unSolidify(uint id) public {
-        // msg.sender must be an owner or approved
-
-        address currentOwner = _ownerOf[id];
-        if (currentOwner == address(0)) {
-            revert("Not solidified");
-        }
-
-        _solidified[msg.sender].remove(id);
-        emit UnSolidified(msg.sender, id);
-
-        uint index = _ownedIndex[id];
-        if (index != _owned[msg.sender].length - 1) {
-            _owned[msg.sender][index] = _owned[msg.sender][_owned[msg.sender].length - 1];
-        }
-        _owned[msg.sender].pop();
-        delete _ownedIndex[id];
-        delete _ownerOf[id];
-
-        (address owner, ) = _decodeOwnerAndId(id);
-        if (owner != currentOwner) {
-            // tokenId will be changed, so need to clear getApproved for current tokenId
-            delete getApproved[id];
-        }
-    }
-
     // TODO remove
     function encodeOwnerAndId(address owner, uint mallableId) public pure returns (uint id) {
         return _encodeOwnerAndId(owner, mallableId);
@@ -199,8 +172,6 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         _owned[to].push(tokenId);
         // update index for to owned
         _ownedIndex[tokenId] = _owned[to].length - 1;
-
-        emit Transfer(from, to, tokenId);
     }
 
     function _doTransferERC20(address from, address to, uint amount) internal {
@@ -282,12 +253,18 @@ contract ERC404ST is ERC5169, ERC404Legacy {
     function _transferERC721(address from, address to, uint tokenId) internal returns (bool) {
         _checkAuthorized(from, msg.sender, tokenId);
         address ownedOwner = _ownerOf[tokenId];
+        address nativeOwner;
         if (ownedOwner == address(0)) {
-            address owner = _getMallableOwner(tokenId);
-            if (owner == address(0)) {
+            nativeOwner = getMallableOwner(tokenId);
+
+            // nativeOwner = _getMallableOwner(tokenId);
+            if (nativeOwner == address(0)) {
                 revert("Token doesnt exists");
             }
-            _transferMallable(owner, to, tokenId);
+            if (from != nativeOwner) {
+                revert InvalidSender();
+            }
+            _transferMallable(nativeOwner, to, tokenId);
             _doTransferERC20(from, to, _getUnit());
         } else {
             if (from != ownedOwner) {
@@ -297,12 +274,37 @@ contract ERC404ST is ERC5169, ERC404Legacy {
             if (to == address(0)) {
                 _burnERC721(tokenId);
             } else {
-                _doTransferERC721(from, to, tokenId);
+                (nativeOwner, ) = _decodeOwnerAndId(tokenId);
+                if (nativeOwner == to) {
+                    _unSolidify(tokenId, ownedOwner);
+                } else {
+                    _doTransferERC721(from, to, tokenId);
+                }
+                emit Transfer(from, to, tokenId);
                 _doTransferERC20(from, to, _getUnit());
             }
 
             return true;
         }
+    }
+
+    // remove token to the solidified array
+    function _unSolidify(uint id, address currentOwner) internal {
+        (address nativeOwner, ) = _decodeOwnerAndId(id);
+
+        _solidified[nativeOwner].remove(id);
+        emit UnSolidified(nativeOwner, id);
+
+        uint index = _ownedIndex[id];
+        if (index != _owned[currentOwner].length - 1) {
+            _owned[currentOwner][index] = _owned[currentOwner][_owned[currentOwner].length - 1];
+        }
+
+        _owned[currentOwner].pop();
+        delete _ownedIndex[id];
+        delete _ownerOf[id];
+        // tokenId will be changed, so need to clear getApproved for current tokenId
+        delete getApproved[id];
     }
 
     function _maybeDecreaseERC20Allowance(address spender, uint256 amountOrId) internal {

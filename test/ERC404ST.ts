@@ -345,6 +345,7 @@ describe('ERC404ST', function () {
 
       await erc404st.connect(w1).approve(w2.address, tokenId_w1_0);
       await erc404st.connect(w2).transferFrom(w1.address, w3.address, tokenId_w1_0);
+
       await erc404st.connect(w3).transferFrom(w3.address, w1.address, tokenId_w1_0);
       await expect(erc404st.connect(w2).transferFrom(w1.address, w3.address, tokenId_w1_0)).to.revertedWithCustomError(
         erc404st,
@@ -363,7 +364,75 @@ describe('ERC404ST', function () {
     });
   });
 
-  describe('Gas usage', function () {
+  describe('Events', function () {
+    it('Solidify by transfer', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      await expect(erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(w1.address, w2.address, tokenId)
+        .emit(erc404st, 'Solidified')
+        .withArgs(w1.address, tokenId);
+      expect(await erc404st.solidifiedTotal(w1.address)).to.eq(1);
+      expect(await erc404st.ownedTotal(w2.address)).to.eq(1);
+    });
+
+    it('UnSolidify', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId);
+
+      expect(await erc404st.solidifiedTotal(w1.address)).to.eq(1);
+      await expect(erc404st.connect(w2).transferFrom(w2.address, w1.address, tokenId))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(w2.address, w1.address, tokenId)
+        .emit(erc404st, 'UnSolidified')
+        .withArgs(w1.address, tokenId);
+
+      expect(await erc404st.solidifiedTotal(w1.address)).to.eq(0);
+    });
+
+    it('Malleable transfer + ERC20 Transfer', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+
+    it('Transfer to another + ERC20 Transfer', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+
+    it('burn Malleable + ERC20 Transfer', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+
+    it('burn Owned + ERC20 Transfer', async function () {
+      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    });
+  });
+
+  /*
+    
+    it('Stay mallable when transfered to the minter', async function () {
+        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      });
+
+      it('Make sure methods doesnt run twice', async function () {
+        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      });
+
+      it('Transfer back to owner - unsolidify', async function () {
+        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      });
+
+        describe('Gas usage', function () {
     it('Show gas usage for transfer 1 ERC20', async function () {
       const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
@@ -399,65 +468,5 @@ describe('ERC404ST', function () {
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
     });
   });
-
-  /*
-    
-
-    
-
-    describe('Events', function () {
-      it('Custom stop', () => expect(0).to.eq('Not implmented yet'));
-      it('Solidify by transfer', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-        await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
-        await expect(erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId))
-          .to.emit(erc404st, 'Transfer')
-          .withArgs(w1.address, w2.address, tokenId)
-          .emit(erc404st, 'Solidified')
-          .withArgs(tokenId, w1.address);
-        expect(await erc404st.solidifiedTotal(w1.address)).to.eq(1);
-        expect(await erc404st.ownedTotal(w2.address)).to.eq(1);
-      });
-
-      it('UnSolidify', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Malleable transfer + ERC20 Transfer', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Transfer to another + ERC20 Transfer', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('burn Malleable + ERC20 Transfer', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('burn Owned + ERC20 Transfer', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-    });
-    it('Stay mallable when transfered to the minter', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Make sure methods doesnt run twice', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Transfer back to owner - unsolidify', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
     */
 });
