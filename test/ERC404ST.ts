@@ -395,78 +395,77 @@ describe('ERC404ST', function () {
     });
 
     it('Malleable transfer + ERC20 Transfer', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-    });
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      expect(await erc404st.balanceOf(w1.address)).to.eq(oneERC20);
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId);
+      expect(await erc404st.balanceOf(w1.address)).to.eq(0);
+      expect(await erc404st.balanceOf(w2.address)).to.eq(oneERC20);
 
-    it('Transfer to another + ERC20 Transfer', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await erc404st.connect(w2).transferFrom(w2.address, w3.address, tokenId);
+      expect(await erc404st.balanceOf(w2.address)).to.eq(0);
+      expect(await erc404st.balanceOf(w3.address)).to.eq(oneERC20);
     });
 
     it('burn Malleable + ERC20 Transfer', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      await expect(erc404st.connect(w1).burn(tokenId))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(w1.address, ethers.ZeroAddress, tokenId)
+        .to.emit(erc404st, 'ERC20Transfer')
+        .withArgs(w1.address, ethers.ZeroAddress, oneERC20);
+
+      expect(await erc404st.balanceOf(w1.address)).to.eq(0);
     });
 
     it('burn Owned + ERC20 Transfer', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId);
+      await expect(erc404st.connect(w2).burn(tokenId))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(w2.address, ethers.ZeroAddress, tokenId)
+        .to.emit(erc404st, 'ERC20Transfer')
+        .withArgs(w2.address, ethers.ZeroAddress, oneERC20);
+
+      expect(await erc404st.balanceOf(w2.address)).to.eq(0);
     });
   });
 
-  /*
-    
-    it('Stay mallable when transfered to the minter', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Make sure methods doesnt run twice', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-      it('Transfer back to owner - unsolidify', async function () {
-        const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-        let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      });
-
-        describe('Gas usage', function () {
+  describe('Gas usage', function () {
     it('Show gas usage for transfer 1 ERC20', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-    });
+      let gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, oneERC20);
+      console.log(`Gas for 1 ERC20 transfer: ${gas}`);
+      
+      // 'Show gas usage for transfer 10 ERC20'
+      gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, 10n * oneERC20);
+      console.log(`Gas for 10 ERC20 transfer: ${gas} (10 Transfer events)`);
 
-    it('Show gas usage for transfer 10 ERC20', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-    });
+      gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, 100n * oneERC20);
+      console.log(`Gas for 100 ERC20 transfer: ${gas} (100 Transfer events)`);
 
-    it('Show gas usage for transfer 1000 ERC20', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-    });
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 100n * oneERC20)
+      gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, w2.address, 100n * oneERC20);
+      console.log(`Gas for 100 ERC20 transfer: ${gas} (100 Transfer events to another account)`);
+      
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, w2.address, tokenId);
+      console.log(`Gas for 1 ERC721 transfer: ${gas}`);
+      
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId);
+      gas = await erc404st.connect(w2).transferFrom.estimateGas(w2.address, w3.address, tokenId);
+      console.log(`Gas for 1 ERC721 transfer(second transfer): ${gas}`);
 
-    it('Show gas usage for transfer 1 ERC721', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-    });
+      await erc404st.connect(w2).transferFrom(w2.address, w3.address, tokenId);
+      gas = await erc404st.connect(w3).transferFrom.estimateGas(w3.address, w1.address, tokenId);
+      console.log(`Gas for 1 ERC721 transfer(back to minter): ${gas}`);
 
-    it('Show gas usage for transfer 1 ERC721 second time', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-    });
-
-    it('Show gas usage for transfer 10 ERC721', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-    });
-
-    it('Show gas usage for transfer 10 ERC721 second time', async function () {
-      const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-      let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
     });
   });
-    */
 });

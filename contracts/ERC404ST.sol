@@ -336,7 +336,7 @@ contract ERC404ST is ERC5169, ERC404Legacy {
         // Skip burn for certain addresses to save gas
         if (!whitelist[from]) {
             // have to emit Transfer event for OpenSea and other services
-            uint256 tokensToBurn = (balanceBeforeSender / unit) - (_balanceOf[from] / unit);
+            uint256 tokensToBurn = totalERC721OfOwner - _balanceOf[from] / unit;
             uint ownedTokensToBurn;
             if (tokensToBurn > mallableNumber) {
                 ownedTokensToBurn = tokensToBurn - mallableNumber;
