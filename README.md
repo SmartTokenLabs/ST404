@@ -2,7 +2,7 @@
 
 ## Overview
 
-ST404 introduces an innovative token standard that builds upon the ERC404 works, aiming to optimise gas efficiency and incorporate dynamic, game-like elements into token transactions. This project merges the liquidity and transferability of ERC20 tokens with the unique identification and collectibility of ERC721 tokens. It is designed to address the challenges of high gas costs in large token transfers and enhance user engagement through unique token characteristics.
+ST404 introduces an innovative token standard that builds upon the Pandora-404 works, aiming to optimise gas efficiency and incorporate dynamic, game-like elements into token transactions. This project merges the liquidity and transferability of ERC20 tokens with the unique identification and collectibility of ERC721 tokens. It is designed to address the challenges of high gas costs in large token transfers and enhance user engagement through unique token characteristics.
 
 ## Key Features
 
@@ -50,7 +50,7 @@ This structuring aims to provide a clearer understanding for developers on how S
 
 ### Accumulation Without Storing Newly Minted Tokens
 
-In ST404, unlike ERC404, the accumulation of tokens leading to a full unit of a token does not result in a change to the storage variables `_owned` and `_ownedData` to reflect a minted token. Although a mint event is produced in such case, the storage remains unaltered. The contract acknowledges the minting of a new token and deduces its presence without needing to modify storage. Conversely, when a user spends half a unit of a token via an ERC20 transfer, as long as the underlying token is malleable, `_owned` and `_ownedData` undergoes no change despite a burn event is produced.
+In ST404, unlike Pandora-404, the accumulation of tokens leading to a full unit of a token does not result in a change to the storage variables `_owned` and `_ownedData` to reflect a minted token. Although a mint event is produced in such case, the storage remains unaltered. The contract acknowledges the minting of a new token and deduces its presence without needing to modify storage. Conversely, when a user spends half a unit of a token via an ERC20 transfer, as long as the underlying token is malleable, `_owned` and `_ownedData` undergoes no change despite a burn event is produced.
 
 A token only undergoes the actual burning process, altering `_owned` and `_ownedData`, when it needs to be "fracturised" due to insufficient malleable tokens for a transfer, necessitating the use of solidified tokens. Before such a solidified token is transferred out, it is "unsolidified," effectively burning it - only if it is fractionated, not when a whole token is transferred. This nuanced approach ensures that the logic of token states — malleable, solidified, and their transitions — aligns with the token's lifecycle and user transactions.
 
