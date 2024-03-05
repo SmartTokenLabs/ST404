@@ -3,7 +3,19 @@ import "@nomicfoundation/hardhat-toolbox";
 require('dotenv/config')
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.20",
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    ],
+  },
   networks: {
     // "https://rpc-mumbai.maticvigil.com",
     // "https://polygon-mumbai-bor.publicnode.com",
