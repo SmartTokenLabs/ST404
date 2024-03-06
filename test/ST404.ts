@@ -9,12 +9,13 @@ describe('ST404', function () {
   // and reset Hardhat Network to that snapshot in every test.
   const decimals = 8n;
   const oneERC20 = 10n ** decimals;
+  const malleableTransfers = false;
   async function deployFixture() {
     // Contracts are deployed using the first signer/account by default
     const [deployer, owner, w1, w2, w3, w4] = await ethers.getSigners();
 
     const ST404 = (await ethers.getContractFactory('ERC404StDev')).connect(deployer);
-    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 1000, owner.address);
+    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 1000, owner.address, malleableTransfers);
 
     return { erc404st, owner, w1, w2, w3, w4 };
   }
@@ -56,37 +57,57 @@ describe('ST404', function () {
       .withArgs(owner.address, w1.address, oneERC20 - 1n);
 
     let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-    await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 1n))
-      .to.emit(erc404st, 'Transfer')
-      .withArgs(ethers.ZeroAddress, w1.address, tokenId);
+    if (malleableTransfers) {
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 1n))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(ethers.ZeroAddress, w1.address, tokenId);
+    } else {
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 1n);
+    }
 
     await expect(erc404st.connect(owner).transferFrom(w1.address, owner.address, 1n)).to.be.revertedWithCustomError(
       erc404st,
       'Unauthorized',
     );
 
-    await expect(erc404st.connect(w1).transferFrom(w1.address, owner.address, 1n))
-      .to.emit(erc404st, 'Transfer')
-      .withArgs(w1.address, ethers.ZeroAddress, tokenId);
+    if (malleableTransfers) {
+      await expect(erc404st.connect(w1).transferFrom(w1.address, owner.address, 1n))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(w1.address, ethers.ZeroAddress, tokenId);
+    } else {
+      await erc404st.connect(w1).transferFrom(w1.address, owner.address, 1n);
+    }
 
-    tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-    await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 1n))
-      .to.emit(erc404st, 'Transfer')
-      .withArgs(ethers.ZeroAddress, w1.address, tokenId);
+    if (malleableTransfers) {
+      tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 1n))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(ethers.ZeroAddress, w1.address, tokenId);
+    } else {
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 1n);
+    }
 
-    tokenId = await erc404st.encodeOwnerAndId(w1.address, 1);
-    await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20))
-      .to.emit(erc404st, 'Transfer')
-      .withArgs(ethers.ZeroAddress, w1.address, tokenId);
+    if (malleableTransfers) {
+      tokenId = await erc404st.encodeOwnerAndId(w1.address, 1);
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(ethers.ZeroAddress, w1.address, tokenId);
+    } else {
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+    }
 
     tokenId = await erc404st.encodeOwnerAndId(w1.address, 2);
     let tokenId2 = await erc404st.encodeOwnerAndId(w1.address, 3);
     // minted 2 ERC721 tokens
-    await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20))
-      .to.emit(erc404st, 'Transfer')
-      .withArgs(ethers.ZeroAddress, w1.address, tokenId)
-      .to.emit(erc404st, 'Transfer')
-      .withArgs(ethers.ZeroAddress, w1.address, tokenId2);
+    if (malleableTransfers) {
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(ethers.ZeroAddress, w1.address, tokenId)
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(ethers.ZeroAddress, w1.address, tokenId2);
+    } else {
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+    }
   });
 
   it('try to transfer from zero balance', async function () {
@@ -149,9 +170,13 @@ describe('ST404', function () {
     await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId);
 
     tokenId = await erc404st.encodeOwnerAndId(w1.address, 2);
-    await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20))
-      .to.emit(erc404st, 'Transfer')
-      .withArgs(ethers.ZeroAddress, w1.address, tokenId);
+    if (malleableTransfers) {
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20))
+        .to.emit(erc404st, 'Transfer')
+        .withArgs(ethers.ZeroAddress, w1.address, tokenId);
+    } else {
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+    }
   });
 
   describe('Burn', function () {
@@ -220,11 +245,17 @@ describe('ST404', function () {
       expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w1.address);
       expect(await erc404st.ownerOf(tokenId_w1_1)).to.eq(w1.address);
 
-      await expect(erc404st.connect(w1).burn(oneERC20))
-        .to.emit(erc404st, 'Transfer')
-        .withArgs(w1.address, ethers.ZeroAddress, tokenId_w1_1)
-        .emit(erc404st, 'ERC20Transfer')
-        .withArgs(w1.address, ethers.ZeroAddress, oneERC20);
+      if (malleableTransfers) {
+        await expect(erc404st.connect(w1).burn(oneERC20))
+          .to.emit(erc404st, 'Transfer')
+          .withArgs(w1.address, ethers.ZeroAddress, tokenId_w1_1)
+          .emit(erc404st, 'ERC20Transfer')
+          .withArgs(w1.address, ethers.ZeroAddress, oneERC20);
+      } else {
+        await expect(erc404st.connect(w1).burn(oneERC20))
+          .emit(erc404st, 'ERC20Transfer')
+          .withArgs(w1.address, ethers.ZeroAddress, oneERC20);
+      }
       await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWith('Token not found');
 
       expect(await erc404st.balanceOf(w1.address)).to.eq(oneERC20);
@@ -290,10 +321,14 @@ describe('ST404', function () {
     it('Approve ERC20', async function () {
       const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
 
-      await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20)).to.emit(
-        erc404st,
-        'Transfer',
-      );
+      if (malleableTransfers) {
+        await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20)).to.emit(
+          erc404st,
+          'Transfer',
+        );
+      } else {
+        await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      }
       await expect(erc404st.connect(w1).approve(w2.address, oneERC20))
         .to.emit(erc404st, 'Approval')
         .withArgs(w1.address, w2.address, oneERC20);
@@ -301,7 +336,12 @@ describe('ST404', function () {
         erc404st,
         'Unauthorized',
       );
-      await expect(erc404st.connect(w2).transferFrom(w1.address, w3.address, oneERC20)).to.emit(erc404st, 'Transfer');
+
+      if (malleableTransfers) {
+        await expect(erc404st.connect(w2).transferFrom(w1.address, w3.address, oneERC20)).to.emit(erc404st, 'Transfer');
+      } else {
+        await erc404st.connect(w2).transferFrom(w1.address, w3.address, oneERC20);
+      }
       await expect(erc404st.connect(w2).transferFrom(w1.address, w3.address, oneERC20)).to.revertedWithCustomError(
         erc404st,
         'Unauthorized',
@@ -519,7 +559,6 @@ describe('ST404', function () {
       expect(await erc404st.ownerOf(tokenId_w1_1)).to.eq(w1.address);
       expect(await erc404st.ownerOf(tokenId_w2_0)).to.eq(w2.address);
       expect(await erc404st.ownerOf(tokenId_w2_1)).to.eq(w2.address);
-
     });
 
     it('tokenOfOwnerByIndex solidified', async function () {
@@ -548,7 +587,7 @@ describe('ST404', function () {
       await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId_w1_1);
 
       expect(await erc404st.tokenByIndex(0)).to.eq(tokenId_w1_1);
-      await expect( erc404st.tokenByIndex(1)).to.revertedWith('Index out of bounds');
+      await expect(erc404st.tokenByIndex(1)).to.revertedWith('Index out of bounds');
     });
   });
 });

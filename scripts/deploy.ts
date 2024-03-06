@@ -36,7 +36,8 @@ async function main() {
   const initialOwnerBalance = 100_000_000;;
 
   const ST404 = (await ethers.getContractFactory('ST404')).connect(admin);
-  const erc404st = await ST404.deploy('Token', 'TKN', decimals, initialOwnerBalance, admin.address);
+  // const erc404st = await ST404.deploy('ST404 Testing Token', 'STTT', decimals, initialOwnerBalance, admin.address);
+  const erc404st = await ST404.deploy('ST404 Testing Token', 'STTT', decimals, initialOwnerBalance, "0x8349Fc69c48aF23e030A655736375d8942De5347");
 
   await erc404st.waitForDeployment();
 
