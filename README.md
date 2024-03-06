@@ -54,6 +54,9 @@ In ST404, unlike Pandora-404, the accumulation of tokens leading to a full unit 
 
 A token only undergoes the actual burning process, altering `_owned` and `_ownedData`, when it needs to be "fracturised" due to insufficient malleable tokens for a transfer, necessitating the use of solidified tokens. Before such a solidified token is transferred out, it is "unsolidified," effectively burning it - only if it is fractionated, not when a whole token is transferred. This nuanced approach ensures that the logic of token states — malleable, solidified, and their transitions — aligns with the token's lifecycle and user transactions.
 
+### Token Enumeration Process
+To understand how ST404 allows for the enumeration of both malleable and solidified tokens, please refer to [Enumeration Process Details](ENUMERATION.md).
+
 ## Getting Started
 
 This project comes with a sample contract, a test for that contract, and a script that deploys that contract.
