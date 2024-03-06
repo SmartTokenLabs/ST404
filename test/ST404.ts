@@ -442,7 +442,7 @@ describe('ST404', function () {
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
       let gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, oneERC20);
       console.log(`Gas for 1 ERC20 transfer: ${gas}`);
-      
+
       // 'Show gas usage for transfer 10 ERC20'
       gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, 10n * oneERC20);
       console.log(`Gas for 10 ERC20 transfer: ${gas} (10 Transfer events)`);
@@ -450,14 +450,14 @@ describe('ST404', function () {
       gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, 100n * oneERC20);
       console.log(`Gas for 100 ERC20 transfer: ${gas} (100 Transfer events)`);
 
-      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 100n * oneERC20)
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 100n * oneERC20);
       gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, w2.address, 100n * oneERC20);
       console.log(`Gas for 100 ERC20 transfer: ${gas} (100 Transfer events to another account)`);
-      
+
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
       gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, w2.address, tokenId);
       console.log(`Gas for 1 ERC721 transfer: ${gas}`);
-      
+
       await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId);
       gas = await erc404st.connect(w2).transferFrom.estimateGas(w2.address, w3.address, tokenId);
       console.log(`Gas for 1 ERC721 transfer(second transfer): ${gas}`);
@@ -465,7 +465,90 @@ describe('ST404', function () {
       await erc404st.connect(w2).transferFrom(w2.address, w3.address, tokenId);
       gas = await erc404st.connect(w3).transferFrom.estimateGas(w3.address, w1.address, tokenId);
       console.log(`Gas for 1 ERC721 transfer(back to minter): ${gas}`);
+    });
+  });
 
+  it('Test ERC5169', async function () {
+    const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+
+    const ERC5169InterfaceId = '0xa86517a1';
+
+    expect((await erc404st.scriptURI()).toString()).to.be.equal([].toString());
+
+    expect(await erc404st.supportsInterface(ERC5169InterfaceId)).to.eq(true);
+
+    const scriptURI = ['uri1', 'uri2', 'uri3'];
+
+    await expect(erc404st.connect(w1).setScriptURI(scriptURI)).to.revertedWithCustomError(erc404st, 'Unauthorized');
+    await expect(erc404st.connect(owner).setScriptURI(scriptURI)).emit(erc404st, 'ScriptUpdate').withArgs(scriptURI);
+
+    expect((await erc404st.scriptURI()).toString()).to.be.equal(scriptURI.toString());
+  });
+
+  it('ERC721, ERC721Enum supportInterface', async function () {
+    const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+
+    const ERC721InterfaceId = '0x80ac58cd';
+    expect(await erc404st.supportsInterface(ERC721InterfaceId)).to.eq(true);
+
+    // const _INTERFACE_ID_ERC721_METADATA = "0x5b5e139f";
+    // expect(await erc404st.supportsInterface(_INTERFACE_ID_ERC721_METADATA)).to.eq(true);
+
+    const _INTERFACE_ID_ERC721_ENUMERABLE = '0x780e9d63';
+    expect(await erc404st.supportsInterface(_INTERFACE_ID_ERC721_ENUMERABLE)).to.eq(true);
+  });
+
+  describe('Enumerable', function () {
+    it('tokenOfOwnerByIndex malleable', async function () {
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+      let tokenId_w1_1 = await erc404st.encodeOwnerAndId(w1.address, 1);
+      let tokenId_w2_0 = await erc404st.encodeOwnerAndId(w2.address, 0);
+      let tokenId_w2_1 = await erc404st.encodeOwnerAndId(w2.address, 1);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      await erc404st.connect(owner).transferFrom(owner.address, w2.address, 2n * oneERC20);
+
+      expect(await erc404st.tokenOfOwnerByIndex(w1.address, 0)).to.eq(tokenId_w1_0);
+      expect(await erc404st.tokenOfOwnerByIndex(w1.address, 1)).to.eq(tokenId_w1_1);
+      await expect(erc404st.tokenOfOwnerByIndex(w1.address, 2)).to.revertedWith('Index out of bounds');
+
+      expect(await erc404st.tokenOfOwnerByIndex(w2.address, 0)).to.eq(tokenId_w2_0);
+      expect(await erc404st.tokenOfOwnerByIndex(w2.address, 1)).to.eq(tokenId_w2_1);
+
+      expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w1.address);
+      expect(await erc404st.ownerOf(tokenId_w1_1)).to.eq(w1.address);
+      expect(await erc404st.ownerOf(tokenId_w2_0)).to.eq(w2.address);
+      expect(await erc404st.ownerOf(tokenId_w2_1)).to.eq(w2.address);
+
+    });
+
+    it('tokenOfOwnerByIndex solidified', async function () {
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+      let tokenId_w1_1 = await erc404st.encodeOwnerAndId(w1.address, 1);
+      let tokenId_w2_0 = await erc404st.encodeOwnerAndId(w2.address, 0);
+      let tokenId_w2_1 = await erc404st.encodeOwnerAndId(w2.address, 1);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      await erc404st.connect(owner).transferFrom(owner.address, w2.address, 2n * oneERC20);
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId_w1_1);
+
+      expect(await erc404st.tokenOfOwnerByIndex(w2.address, 0)).to.eq(tokenId_w1_1);
+      expect(await erc404st.tokenOfOwnerByIndex(w2.address, 1)).to.eq(tokenId_w2_0);
+      expect(await erc404st.tokenOfOwnerByIndex(w2.address, 2)).to.eq(tokenId_w2_1);
+      await expect(erc404st.tokenOfOwnerByIndex(w2.address, 3)).to.revertedWith('Index out of bounds');
+
+      expect(await erc404st.ownerOf(tokenId_w2_0)).to.eq(w2.address);
+      expect(await erc404st.ownerOf(tokenId_w2_1)).to.eq(w2.address);
+      expect(await erc404st.ownerOf(tokenId_w1_1)).to.eq(w2.address);
+    });
+    it('tokenByIndex', async function () {
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+      let tokenId_w1_1 = await erc404st.encodeOwnerAndId(w1.address, 1);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      await erc404st.connect(owner).transferFrom(owner.address, w2.address, 2n * oneERC20);
+      await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId_w1_1);
+
+      expect(await erc404st.tokenByIndex(0)).to.eq(tokenId_w1_1);
+      await expect( erc404st.tokenByIndex(1)).to.revertedWith('Index out of bounds');
     });
   });
 });

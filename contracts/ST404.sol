@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 import {ERC404Legacy} from "./ERC404Legacy.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {ERC5169} from "stl-contracts/ERC/ERC5169.sol";
 import {console} from "hardhat/console.sol";
@@ -25,7 +28,12 @@ contract ST404 is ERC5169, ERC404Legacy {
     // owner -> ids[]
     // mapping(address => uint256[]) public receivedSolidified;
 
-    /// @dev TokenId packed next way: [address ¹⁶⁰] [sequentialID⁹⁶] bit 1 - bit 160 - walletAddress, which minted the token, bit 161 - 256 - sequence number of minted token in wallet
+    uint256[] private _allTokens;
+    mapping(uint256 tokenId => uint256) private _allTokensIndex;
+
+    /// @dev TokenId packed next way: [address ¹⁶⁰] [sequentialID⁹⁶] 
+    // bit 1 - bit 160 - walletAddress, which minted the token, 
+    // bit 161 - 256 - sequence number of minted token in wallet
 
     uint256 private constant _MAX_AMOUNT = (1 << 96) - 1;
 
@@ -47,6 +55,13 @@ contract ST404 is ERC5169, ERC404Legacy {
     ) ERC404Legacy(_name, _symbol, _decimals, _totalNativeSupply, _owner) {
         _balanceOf[_owner] = totalSupply;
         whitelist[_owner] = true;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IERC20).interfaceId
+        || interfaceId == type(IERC721).interfaceId
+        || interfaceId == type(IERC721Enumerable).interfaceId
+        || ERC5169.supportsInterface(interfaceId);
     }
 
     function tokenURI(uint256 id_) public pure override returns (string memory) {
@@ -92,7 +107,7 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _calcBalanceOf(address owner) internal view returns (uint256) {
-        return _balanceOf[owner] + _owned[owner].length * _getUnit();
+        return _balanceOf[owner] + _owned[owner].length * unit;
     }
 
     function balanceOf(address owner) public view returns (uint256) {
@@ -102,7 +117,7 @@ contract ST404 is ERC5169, ERC404Legacy {
 
     function erc721balanceOf(address owner) public view returns (uint256) {
         // return _calcBalanceOf(owner);
-        return _balanceOf[owner] / _getUnit();
+        return _balanceOf[owner] / unit;
     }
 
     function isMalleableExists(uint id, address owner, uint fullId) public view returns (bool) {
@@ -142,8 +157,28 @@ contract ST404 is ERC5169, ERC404Legacy {
         return _solidified[owner].contains(id);
     }
 
+    function _addTokenToAllTokensEnumeration(uint256 tokenId) private {
+        _allTokensIndex[tokenId] = _allTokens.length;
+        _allTokens.push(tokenId);
+    }
+
+    function _removeTokenFromAllTokensEnumeration(uint256 tokenId) private {
+        uint256 lastTokenIndex = _allTokens.length - 1;
+        uint256 tokenIndex = _allTokensIndex[tokenId];
+
+        uint256 lastTokenId = _allTokens[lastTokenIndex];
+
+        _allTokens[tokenIndex] = lastTokenId; // Move the last token to the slot of the to-delete token
+        _allTokensIndex[lastTokenId] = tokenIndex; // Update the moved token's index
+
+        delete _allTokensIndex[tokenId];
+        _allTokens.pop();
+    }
+
     function _setOwned(uint tokenId, address owner) internal {
         delete getApproved[tokenId];
+
+        _addTokenToAllTokensEnumeration(tokenId);
 
         _ownerOf[tokenId] = owner;
         _owned[owner].push(tokenId);
@@ -179,7 +214,7 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _doTransferERC20(address from, address to, uint amount) internal {
-        require(amount <= _balanceOf[from], "Not enough balance");
+        require(amount <= _balanceOf[from], "Insufficient balance");
         unchecked {
             _balanceOf[from] -= amount;
             _balanceOf[to] += amount;
@@ -213,19 +248,58 @@ contract ST404 is ERC5169, ERC404Legacy {
             if (owner != msg.sender) {
                 revert Unauthorized();
             }
-            uint256 lastId = _owned[owner][_owned[owner].length - 1];
-            _owned[owner].pop();
-            delete _ownedIndex[lastId];
-            delete _ownerOf[lastId];
-            delete getApproved[lastId];
+
+            _removeTokenFromAllTokensEnumeration(tokenId);
+            _removeTokenFromOwnedEnumerationsAndApproved(owner, tokenId);
         }
 
         emit Transfer(owner, address(0), tokenId);
-
         unchecked {
-            _balanceOf[owner] -= _getUnit();
+            _balanceOf[owner] -= unit;
         }
-        emit ERC20Transfer(owner, address(0), _getUnit());
+        emit ERC20Transfer(owner, address(0), unit);
+    }
+
+    function _removeTokenFromOwnedEnumerationsAndApproved(address owner, uint tokenId) internal {
+        uint256 lastTokenIndex = _owned[owner].length - 1;
+        uint256 lastTokenId = _owned[owner][lastTokenIndex];
+        uint256 tokenIndex = _ownedIndex[tokenId];
+        if (tokenIndex != lastTokenIndex) {
+            _ownedIndex[lastTokenId] = tokenIndex;
+            _owned[owner][tokenIndex] = lastTokenId;
+        }
+        _owned[owner].pop();
+        delete _ownedIndex[tokenId];
+        delete _ownerOf[tokenId];
+        delete getApproved[tokenId];
+    }
+
+    // remove token to the solidified array
+    function _unSolidify(uint tokenId, address currentOwner) internal {
+        (address nativeOwner, ) = _decodeOwnerAndId(tokenId);
+
+        _solidified[nativeOwner].remove(tokenId);
+        emit UnSolidified(nativeOwner, tokenId);
+
+        _removeTokenFromOwnedEnumerationsAndApproved(currentOwner, tokenId);
+        _removeTokenFromAllTokensEnumeration(tokenId);
+    }
+
+    function _doBurnFirstUserERC721(address owner) internal {
+        uint256 lastTokenIndex = _owned[owner].length - 1;
+        uint256 lastTokenId = _owned[owner][lastTokenIndex];
+        uint256 firstTokenId = _owned[owner][0];
+        if (0 != lastTokenIndex) {
+            delete _ownedIndex[firstTokenId];
+            _ownedIndex[lastTokenId] = 0;
+            _owned[owner][0] = lastTokenId;
+        }
+        _owned[owner].pop();
+
+        delete _ownerOf[firstTokenId];
+        delete getApproved[firstTokenId];
+
+        _removeTokenFromAllTokensEnumeration(firstTokenId);
     }
 
     function _checkAuthorized(address owner, address spender, uint256 tokenId) internal view {
@@ -261,7 +335,6 @@ contract ST404 is ERC5169, ERC404Legacy {
         if (ownedOwner == address(0)) {
             nativeOwner = getMalleableOwner(tokenId);
 
-            // nativeOwner = _getMalleableOwner(tokenId);
             if (nativeOwner == address(0)) {
                 revert("Token doesnt exists");
             }
@@ -269,7 +342,7 @@ contract ST404 is ERC5169, ERC404Legacy {
                 revert InvalidSender();
             }
             _transferMalleable(nativeOwner, to, tokenId);
-            _doTransferERC20(from, to, _getUnit());
+            _doTransferERC20(from, to, unit);
         } else {
             if (from != ownedOwner) {
                 revert InvalidSender();
@@ -285,30 +358,11 @@ contract ST404 is ERC5169, ERC404Legacy {
                     _doTransferERC721(from, to, tokenId);
                 }
                 emit Transfer(from, to, tokenId);
-                _doTransferERC20(from, to, _getUnit());
+                _doTransferERC20(from, to, unit);
             }
 
-            return true;
         }
-    }
-
-    // remove token to the solidified array
-    function _unSolidify(uint id, address currentOwner) internal {
-        (address nativeOwner, ) = _decodeOwnerAndId(id);
-
-        _solidified[nativeOwner].remove(id);
-        emit UnSolidified(nativeOwner, id);
-
-        uint index = _ownedIndex[id];
-        if (index != _owned[currentOwner].length - 1) {
-            _owned[currentOwner][index] = _owned[currentOwner][_owned[currentOwner].length - 1];
-        }
-
-        _owned[currentOwner].pop();
-        delete _ownedIndex[id];
-        delete _ownerOf[id];
-        // tokenId will be changed, so need to clear getApproved for current tokenId
-        delete getApproved[id];
+        return true;
     }
 
     function _maybeDecreaseERC20Allowance(address spender, uint256 amountOrId) internal {
@@ -325,39 +379,35 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _transferERC20(address from, address to, uint amount) internal returns (bool) {
-        // _maybeDecreaseERC20Allowance(from, amount);
-        uint256 unit = _getUnit();
         uint256 balanceBeforeSender = _balanceOf[from];
-        if (balanceBeforeSender < amount) {
-            revert("Insufficient balance");
-        }
         uint256 balanceBeforeReceiver = _balanceOf[to];
         _maybeDecreaseERC20Allowance(from, amount);
         _doTransferERC20(from, to, amount);
-
-        uint totalERC721OfOwner = balanceBeforeSender / unit;
-        uint mallableNumber = totalERC721OfOwner - _owned[from].length;
+        // console.log(gasleft(), "_transferERC20(after ERC20 transfer + event). gas left");
+        uint totalFromUnits = balanceBeforeSender / unit;
+        uint malleableUnits = totalFromUnits - _owned[from].length;
         // Skip burn for certain addresses to save gas
         if (!whitelist[from]) {
             // have to emit Transfer event for OpenSea and other services
-            uint256 tokensToBurn = totalERC721OfOwner - _balanceOf[from] / unit;
+            uint256 tokensToBurn = totalFromUnits - _balanceOf[from] / unit;
             uint ownedTokensToBurn;
-            if (tokensToBurn > mallableNumber) {
-                ownedTokensToBurn = tokensToBurn - mallableNumber;
-                tokensToBurn = mallableNumber;
+            if (tokensToBurn > malleableUnits) {
+                ownedTokensToBurn = tokensToBurn - malleableUnits;
+                tokensToBurn = malleableUnits;
             }
-
+            uint encodedTokenId;
             // start from number of tokens + number of solidified tokens - balance
             if (tokensToBurn > 0) {
                 for (
-                    uint256 i = totalERC721OfOwner + _solidified[from].length() - _owned[from].length;
+                    uint256 i = totalFromUnits + _solidified[from].length() - _owned[from].length;
                     tokensToBurn > 0;
                     i--
                 ) {
                     // i - 1 because zero token ID exists
-                    if (!_solidified[from].contains(encodeOwnerAndId(from, i - 1))) {
+                    encodedTokenId = encodeOwnerAndId(from, i - 1);
+                    if (!_solidified[from].contains(encodedTokenId)) {
                         tokensToBurn--;
-                        emit Transfer(from, address(0), encodeOwnerAndId(from, i - 1));
+                        emit Transfer(from, address(0), encodedTokenId);
                     }
                 }
             }
@@ -366,14 +416,8 @@ contract ST404 is ERC5169, ERC404Legacy {
                 while (ownedTokensToBurn > 0) {
                     // update _owned for sender
                     emit Transfer(from, address(0), _owned[from][0]);
-
-                    uint256 lastId = _owned[from][_owned[from].length - 1];
-                    delete _ownerOf[_owned[from][0]];
-                    _owned[from][0] = lastId;
-                    _owned[from].pop();
-                    // update index for to owned
-                    _ownedIndex[lastId] = 0;
                     ownedTokensToBurn--;
+                    _doBurnFirstUserERC721(from);
                 }
             }
         }
@@ -381,12 +425,12 @@ contract ST404 is ERC5169, ERC404Legacy {
         // Skip minting for certain addresses to save gas
         if (!whitelist[to] && to != address(0)) {
             // emit Transfer event for OpenSea and other services
-            mallableNumber = balanceBeforeReceiver / unit - _owned[to].length;
+            malleableUnits = balanceBeforeReceiver / unit - _owned[to].length;
 
             uint256 tokensToMint = (_balanceOf[to] / unit) - (balanceBeforeReceiver / unit);
             bool check;
             if (tokensToMint > 0) {
-                for (uint256 i = mallableNumber; tokensToMint > 0; i++) {
+                for (uint256 i = malleableUnits; tokensToMint > 0; i++) {
                     check = _solidified[to].contains(encodeOwnerAndId(to, i));
                     if (!check) {
                         tokensToMint--;
@@ -396,7 +440,6 @@ contract ST404 is ERC5169, ERC404Legacy {
             }
         }
 
-        emit ERC20Transfer(from, to, amount);
         return true;
     }
 
@@ -426,6 +469,36 @@ contract ST404 is ERC5169, ERC404Legacy {
         }
 
         return true;
+    }
+
+    // only for owned(solodified) tokens
+    function tokenByIndex(uint256 index) public view returns (uint256) {
+        require( index < _allTokens.length, "Index out of bounds");
+        return _allTokens[index];
+    }
+
+    // solodified+maleable tokens
+    function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256) {
+        uint owned = _owned[owner].length;
+        if (owned > index) {
+            return _owned[owner][index];
+        }
+        uint total = _balanceOf[owner] / unit;
+        if (total <= index) {
+            revert("Index out of bounds");
+        }
+        uint tokenId;
+        uint skipIndex = index - owned;
+        for (uint i = 0; i < total + _solidified[owner].length(); i++) {
+            tokenId = encodeOwnerAndId(owner, i);
+            if (!_solidified[owner].contains(tokenId)) {
+                if (skipIndex == 0) {
+                    return tokenId;
+                }
+                skipIndex--;
+            }
+        }
+        revert("Index out of bounds(2)");
     }
 }
 

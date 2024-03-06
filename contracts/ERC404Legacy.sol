@@ -103,6 +103,8 @@ abstract contract ERC404Legacy is Ownable {
   /// @dev Decimals for fractional representation
   uint8 public immutable decimals;
 
+  uint public immutable unit;
+
   /// @dev Total supply in fractionalized representation
   uint256 public immutable totalSupply;
 
@@ -146,6 +148,7 @@ abstract contract ERC404Legacy is Ownable {
     symbol = _symbol;
     decimals = _decimals;
     totalSupply = _totalNativeSupply * (10 ** decimals);
+    unit = 10 ** _decimals;
   }
 
   /// @notice Initialization function to set pairs / etc
@@ -193,7 +196,6 @@ abstract contract ERC404Legacy is Ownable {
 
   /// @notice Function native approvals
   function setApprovalForAll(address operator, bool approved) public virtual {
-    console.log("setApprovalForAll", msg.sender, operator);
     isApprovedForAll[msg.sender][operator] = approved;
 
     emit ApprovalForAll(msg.sender, operator, approved);
@@ -223,10 +225,10 @@ abstract contract ERC404Legacy is Ownable {
         revert Unauthorized();
       }
 
-      _balanceOf[from] -= _getUnit();
+      _balanceOf[from] -= unit;
 
       unchecked {
-        _balanceOf[to] += _getUnit();
+        _balanceOf[to] += unit;
       }
 
       _ownerOf[amountOrId] = to;
@@ -245,7 +247,7 @@ abstract contract ERC404Legacy is Ownable {
       _ownedIndex[amountOrId] = _owned[to].length - 1;
 
       emit Transfer(from, to, amountOrId);
-      emit ERC20Transfer(from, to, _getUnit());
+      emit ERC20Transfer(from, to, unit);
     } else {
       uint256 allowed = allowance[from][msg.sender];
 
@@ -302,7 +304,6 @@ abstract contract ERC404Legacy is Ownable {
     address to,
     uint256 amount
   ) internal virtual returns (bool) {
-    uint256 unit = _getUnit();
     uint256 balanceBeforeSender = _balanceOf[from];
     uint256 balanceBeforeReceiver = _balanceOf[to];
 
@@ -332,11 +333,6 @@ abstract contract ERC404Legacy is Ownable {
 
     emit ERC20Transfer(from, to, amount);
     return true;
-  }
-
-  // Internal utility logic
-  function _getUnit() internal view returns (uint256) {
-    return 10 ** decimals;
   }
 
   function _mint(address to) internal virtual {
