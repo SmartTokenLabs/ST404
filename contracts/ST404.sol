@@ -61,7 +61,7 @@ contract ST404 is ERC5169, ERC404Legacy {
         malleableTransfers = _malleableTransfers;
     }
 
-    function enableMalleableTransfers(bool _malleableTransfers) external onlyOwner {
+    function emitMalleableTransfers(bool _malleableTransfers) external onlyOwner {
         malleableTransfers = _malleableTransfers;
     }
 
@@ -360,9 +360,10 @@ contract ST404 is ERC5169, ERC404Legacy {
             if (allowed < amountOrId) {
                 revert Unauthorized();
             }
-
-            // if (allowed != type(uint256).max)
-            allowance[spender][msg.sender] = allowed - amountOrId;
+            // check if its not acts like Allowance for all
+            if (allowed != type(uint256).max){
+                allowance[spender][msg.sender] = allowed - amountOrId;
+            }
         }
     }
 
@@ -435,7 +436,8 @@ contract ST404 is ERC5169, ERC404Legacy {
     /// @notice Function for token approvals
     /// @dev This function assumes id / native if amount less than or equal to current max id
     function approve(address spender, uint256 amountOrId) public virtual override returns (bool) {
-        if (amountOrId > _MAX_AMOUNT) {
+        // check if its not acts like Allowance for all and not amount
+        if (amountOrId > _MAX_AMOUNT && amountOrId != type(uint256).max) {
             address owner = _ownerOf[amountOrId];
 
             if (owner == address(0)) {

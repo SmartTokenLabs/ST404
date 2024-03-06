@@ -9,7 +9,7 @@ describe('ST404', function () {
   // and reset Hardhat Network to that snapshot in every test.
   const decimals = 8n;
   const oneERC20 = 10n ** decimals;
-  const malleableTransfers = false;
+  const malleableTransfers = true;
   async function deployFixture() {
     // Contracts are deployed using the first signer/account by default
     const [deployer, owner, w1, w2, w3, w4] = await ethers.getSigners();
@@ -402,6 +402,18 @@ describe('ST404', function () {
       await erc404st.connect(w2).approve(w3.address, tokenId_w1_0);
       await erc404st.connect(w3).transferFrom(w1.address, w4.address, tokenId_w1_0);
     });
+    it('Approve ERC20 uint256.max', async function () {
+      const { erc404st, owner, w1, w2, w3, w4 } = await loadFixture(deployFixture);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+      
+      await erc404st.connect(w1).approve(w2.address, ethers.MaxUint256);
+      await erc404st.connect(w2).transferFrom(w1.address, w3.address, 2n * oneERC20);
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 20n * oneERC20);
+      await erc404st.connect(w2).transferFrom(w1.address, w3.address, 20n * oneERC20);
+
+      expect(await erc404st.balanceOf(w1)).to.eq(0);
+      expect(await erc404st.balanceOf(w3)).to.eq(22n * oneERC20);
+    });
   });
 
   describe('Events', function () {
@@ -590,4 +602,45 @@ describe('ST404', function () {
       await expect(erc404st.tokenByIndex(1)).to.revertedWith('Index out of bounds');
     });
   });
+
+  describe('Ownable', function () {
+    it('all', async function () {
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+
+      await expect(erc404st.connect(owner).setWhitelist(owner.address, true)).to.not.reverted;
+      await expect(erc404st.connect(w1).setWhitelist(owner.address, true)).to.revertedWithCustomError(erc404st,"Unauthorized");
+
+      await expect(erc404st.connect(owner).transferOwnership(w1.address)).to.not.reverted;
+      await expect(erc404st.connect(w2).transferOwnership(owner.address)).to.revertedWithCustomError(erc404st,"Unauthorized");
+
+      await expect(erc404st.connect(w1).emitMalleableTransfers(true)).to.not.reverted;
+      await expect(erc404st.connect(w2).emitMalleableTransfers(true)).to.revertedWithCustomError(erc404st,"Unauthorized");
+
+      await expect(erc404st.connect(w1).revokeOwnership()).to.not.reverted;
+      await expect(erc404st.connect(w2).revokeOwnership()).to.revertedWithCustomError(erc404st,"Unauthorized");
+    })
+  })
+
+  describe('Whitelist', function () {
+    it('enable/disable', async function () {
+      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+      let tokenId_w2_1 = await erc404st.encodeOwnerAndId(w2.address, 1);
+
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20))
+        .to.emit(erc404st, "Transfer").withArgs(ethers.ZeroAddress, w1.address, tokenId_w1_0);
+
+      await erc404st.connect(owner).setWhitelist(w2.address, true)
+
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w2.address, oneERC20))
+      .to.not.emit(erc404st, "Transfer");
+
+      await erc404st.connect(owner).setWhitelist(w2.address, false)
+
+      await expect(erc404st.connect(owner).transferFrom(owner.address, w2.address, oneERC20))
+      .to.emit(erc404st, "Transfer").withArgs(ethers.ZeroAddress, w2.address, tokenId_w2_1);
+    })
+  })
+  
 });

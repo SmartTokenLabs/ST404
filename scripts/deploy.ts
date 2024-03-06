@@ -33,16 +33,17 @@ async function main() {
 
   const [deployer, owner, w1, w2] = await ethers.getSigners();
   const decimals = 8n;
-  const initialOwnerBalance = 100_000_000;;
+  const initialOwnerBalance = 100_000_000;
+  const malleableTransfers = true;
 
   const ST404 = (await ethers.getContractFactory('ST404')).connect(admin);
   // const erc404st = await ST404.deploy('ST404 Testing Token', 'STTT', decimals, initialOwnerBalance, admin.address);
-  const erc404st = await ST404.deploy('ST404 Testing Token', 'STTT', decimals, initialOwnerBalance, "0x8349Fc69c48aF23e030A655736375d8942De5347");
+  const erc404st = await ST404.deploy('ST404 Testing Token', 'STTT', decimals, initialOwnerBalance, "0x8349Fc69c48aF23e030A655736375d8942De5347", malleableTransfers);
 
   await erc404st.waitForDeployment();
 
   console.log(
-    `erc404st deployed to ${erc404st.target}`
+    `ST404 deployed to ${erc404st.target}`
   );
 }
 
