@@ -50,6 +50,19 @@ describe('ST404', function () {
     expect(await erc404st.balanceOf(owner.address)).to.eq(1000n * oneERC20);
   });
 
+  it('Get token metadata', async function () {
+    const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
+    let tokenId = 1n;
+
+    let tokenMeta = await erc404st.tokenURI(tokenId);
+
+    let jsonData: JSON = JSON.parse(tokenMeta);
+    // @ts-ignore
+    expect(jsonData.name).to.eq(`ST404 #${tokenId}`);
+    // @ts-ignore
+    expect(jsonData.description).to.eq(`A collection of ST404 Tokens enhanced with TokenScript`);
+  });
+
   it('Transfer 1 unit to wallet1', async function () {
     const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
     await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20 - 1n))

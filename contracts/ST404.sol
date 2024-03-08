@@ -72,7 +72,7 @@ contract ST404 is ERC5169, ERC404Legacy {
         || ERC5169.supportsInterface(interfaceId);
     }
 
-    function tokenURI(uint256 id_) public pure override returns (string memory) {
+    function tokenURI(uint256 id_) public pure virtual override returns (string memory) {
         return string.concat("https://to.be.changed.com/token/", Strings.toString(id_));
     }
 
@@ -527,5 +527,58 @@ contract ERC404StDev is ST404 {
 
     function getMalleableOwner(uint id_) public view returns (address) {
         return _getMalleableOwner(id_);
+    }
+
+    function tokenURI(uint256 id) public override pure returns (string memory) {
+        // Is it possible to implement _ifExists(id) for st404?
+        uint8 seed = uint8(bytes1(keccak256(abi.encodePacked(id))));
+        string memory imageColor;
+        string memory color;
+
+        if (seed <= 100) {
+            imageColor = "blue";
+            color = "Blue";
+        } else if (seed <= 150) {
+            imageColor = "green";
+            color = "Green";
+        } else if (seed <= 200) {
+            imageColor = "yellow";
+            color = "Yellow";
+        } else if (seed <= 230) {
+            imageColor = "purple";
+            color = "Purple";
+        } else if (seed <= 248) {
+            imageColor = "red";
+            color = "Red";
+        } else {
+            imageColor = "black";
+            color = "Black";
+        }
+
+        return
+            string(
+                abi.encodePacked(
+                    '{"name": "ST404 #',
+                    Strings.toString(id),
+                    '","description":"A collection of ST404 Tokens enhanced with TokenScript',
+                    '","image":"',
+                    getBubbleIcon(imageColor),
+                    '","attributes":[{"trait_type":"Color","value":"',
+                    color,
+                    '"}]}'
+                )
+            );
+    }
+
+    // Simple SVG icon representing the token
+    function getBubbleIcon(string memory color) private pure returns (string memory) {
+        return string(
+                abi.encodePacked(
+                    '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'50\' height=\'50\' viewBox=\'0 0 50 50\'>',
+                    '<circle cx=\'25\' cy=\'25\' r=\'20\' fill=\'', color, '\' />',
+                    '<circle cx=\'35\' cy=\'15\' r=\'5\' fill=\'white\' />',
+                    '</svg>'
+                )
+                );
     }
 }
