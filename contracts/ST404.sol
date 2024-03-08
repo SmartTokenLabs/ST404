@@ -72,10 +72,6 @@ contract ST404 is ERC5169, ERC404Legacy {
         || ERC5169.supportsInterface(interfaceId);
     }
 
-    function tokenURI(uint256 id_) public pure virtual override returns (string memory) {
-        return string.concat("https://to.be.changed.com/token/", Strings.toString(id_));
-    }
-
     function _encodeOwnerAndId(address owner, uint malleableId) internal pure returns (uint id) {
         require(malleableId < _MAX_AMOUNT, "Too high mallable ID");
         id = ((uint256(uint160(owner))) << 96) | malleableId;
@@ -491,43 +487,6 @@ contract ST404 is ERC5169, ERC404Legacy {
         }
         revert("Index out of bounds(2)");
     }
-}
-
-contract ERC404StDev is ST404 {
-    using EnumerableSet for EnumerableSet.UintSet;
-
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        uint8 _decimals,
-        uint256 _totalNativeSupply,
-        address _owner,
-        bool _malleableTransfers
-    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner, _malleableTransfers) {}
-
-    function solidifiedTotal(address addr) public view returns (uint256) {
-        return _solidified[addr].length();
-    }
-
-    function ownedTotal(address addr) public view returns (uint256) {
-        return _owned[addr].length;
-    }
-
-    function getOwned(address addr, uint i) public view returns (uint256) {
-        return _owned[addr][i];
-    }
-
-    function decodeOwnerAndId(uint id) public pure returns (address owner, uint malleableId) {
-        (owner, malleableId) = _decodeOwnerAndId(id);
-    }
-
-    function encodeOwnerAndId(address owner, uint malleableId) public pure returns (uint id) {
-        return _encodeOwnerAndId(owner, malleableId);
-    }
-
-    function getMalleableOwner(uint id_) public view returns (address) {
-        return _getMalleableOwner(id_);
-    }
 
     function tokenURI(uint256 id) public override pure returns (string memory) {
         // Is it possible to implement _ifExists(id) for st404?
@@ -580,5 +539,42 @@ contract ERC404StDev is ST404 {
                     '</svg>'
                 )
                 );
+    }
+}
+
+contract ERC404StDev is ST404 {
+    using EnumerableSet for EnumerableSet.UintSet;
+
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals,
+        uint256 _totalNativeSupply,
+        address _owner,
+        bool _malleableTransfers
+    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner, _malleableTransfers) {}
+
+    function solidifiedTotal(address addr) public view returns (uint256) {
+        return _solidified[addr].length();
+    }
+
+    function ownedTotal(address addr) public view returns (uint256) {
+        return _owned[addr].length;
+    }
+
+    function getOwned(address addr, uint i) public view returns (uint256) {
+        return _owned[addr][i];
+    }
+
+    function decodeOwnerAndId(uint id) public pure returns (address owner, uint malleableId) {
+        (owner, malleableId) = _decodeOwnerAndId(id);
+    }
+
+    function encodeOwnerAndId(address owner, uint malleableId) public pure returns (uint id) {
+        return _encodeOwnerAndId(owner, malleableId);
+    }
+
+    function getMalleableOwner(uint id_) public view returns (address) {
+        return _getMalleableOwner(id_);
     }
 }
