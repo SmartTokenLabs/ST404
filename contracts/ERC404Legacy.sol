@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import {console} from "hardhat/console.sol";
+import {ERC721Events} from "./lib/ERC721Events.sol";
+import {ERC20Events} from "./lib/ERC20Events.sol";
 
 abstract contract Ownable {
   event OwnershipTransferred(address indexed user, address indexed newOwner);
@@ -67,25 +69,6 @@ abstract contract ERC721Receiver {
 ///         design.
 ///
 abstract contract ERC404Legacy is Ownable {
-  // Events
-  event ERC20Transfer(address indexed from, address indexed to, uint256 amount);
-  event Approval(
-    address indexed owner,
-    address indexed spender,
-    uint256 amount
-  );
-  event Transfer(address indexed from, address indexed to, uint256 indexed id);
-  event ERC721Approval(
-    address indexed owner,
-    address indexed spender,
-    uint256 indexed id
-  );
-  event ApprovalForAll(
-    address indexed owner,
-    address indexed operator,
-    bool approved
-  );
-
   // Errors
   error NotFound();
   error AlreadyExists();
@@ -184,11 +167,11 @@ abstract contract ERC404Legacy is Ownable {
 
       getApproved[amountOrId] = spender;
 
-      emit Approval(owner, spender, amountOrId);
+      emit ERC721Events.Approval(owner, spender, amountOrId);
     } else {
       allowance[msg.sender][spender] = amountOrId;
 
-      emit Approval(msg.sender, spender, amountOrId);
+      emit ERC20Events.Approval(msg.sender, spender, amountOrId);
     }
 
     return true;
@@ -198,7 +181,7 @@ abstract contract ERC404Legacy is Ownable {
   function setApprovalForAll(address operator, bool approved) public virtual {
     isApprovedForAll[msg.sender][operator] = approved;
 
-    emit ApprovalForAll(msg.sender, operator, approved);
+    emit ERC721Events.ApprovalForAll(msg.sender, operator, approved);
   }
 
   /// @notice Function for mixed transfers
@@ -246,8 +229,8 @@ abstract contract ERC404Legacy is Ownable {
       // update index for to owned
       _ownedIndex[amountOrId] = _owned[to].length - 1;
 
-      emit Transfer(from, to, amountOrId);
-      emit ERC20Transfer(from, to, unit);
+      emit ERC721Events.Transfer(from, to, amountOrId);
+      emit ERC20Events.Transfer(from, to, unit);
     } else {
       uint256 allowed = allowance[from][msg.sender];
 
@@ -331,7 +314,7 @@ abstract contract ERC404Legacy is Ownable {
       }
     }
 
-    emit ERC20Transfer(from, to, amount);
+    emit ERC20Events.Transfer(from, to, amount);
     return true;
   }
 
@@ -354,7 +337,7 @@ abstract contract ERC404Legacy is Ownable {
     _owned[to].push(id);
     _ownedIndex[id] = _owned[to].length - 1;
 
-    emit Transfer(address(0), to, id);
+    emit ERC721Events.Transfer(address(0), to, id);
   }
 
   function _burn(address from) internal virtual {
@@ -368,7 +351,7 @@ abstract contract ERC404Legacy is Ownable {
     delete _ownerOf[id];
     delete getApproved[id];
 
-    emit Transfer(from, address(0), id);
+    emit ERC721Events.Transfer(from, address(0), id);
   }
 
   function _setNameSymbol(string memory _name, string memory _symbol) internal {
