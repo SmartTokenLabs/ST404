@@ -633,15 +633,34 @@ describe('ST404', function () {
 
   describe('setSelfERC721TransferExempt', function () {
     it('enable/disable', async function () {
-      const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+      const { erc404st, erc721events, owner, w1, w2, w3 } = await loadFixture(deployFixture);
       let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
       let tokenId_w1_1 = await erc404st.encodeOwnerAndId(w1.address, 1);
       let tokenId_w2_0 = await erc404st.encodeOwnerAndId(w2.address, 0);
       let tokenId_w2_1 = await erc404st.encodeOwnerAndId(w2.address, 1);
-      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+
+      await expect(erc404st.connect(w1).setSelfERC721TransferExempt(true)).to.emit(erc404st, 'SetERC721TransferExempt').withArgs(w1.address, true);
+      
       await erc404st.connect(owner).transferFrom(owner.address, w2.address, 2n * oneERC20);
-      // await erc404st.connect(w1).setSelfERC721TransferExempt(true);
-      expect(0).to.eq(1);
+
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+
+      await expect(erc404st.connect(w1).setSelfERC721TransferExempt(false))
+        .to.emit(erc404st, 'SetERC721TransferExempt').withArgs(w1.address, false)
+        .to.emit(erc721events, 'Transfer').withArgs(ethers.ZeroAddress, w1.address, tokenId_w1_0)
+        .to.emit(erc721events, 'Transfer').withArgs(ethers.ZeroAddress, w1.address, tokenId_w1_1)
+
+      await expect(erc404st.connect(w1).setSelfERC721TransferExempt(true))
+        .to.emit(erc404st, 'SetERC721TransferExempt').withArgs(w1.address, true)
+        .to.emit(erc721events, 'Transfer').withArgs(w1.address, ethers.ZeroAddress, tokenId_w1_0)
+        .to.emit(erc721events, 'Transfer').withArgs(w1.address, ethers.ZeroAddress, tokenId_w1_1)
+      
+      await erc404st.connect(w2).transfer(w1.address, tokenId_w2_0);
+
+      await erc404st.connect(w1).transfer(ethers.ZeroAddress, 2n * oneERC20);
+
+      await expect(erc404st.connect(w1).setSelfERC721TransferExempt(false)).to.not.emit(erc404st, 'Transfer');
+
     });
   });
 });

@@ -17,6 +17,9 @@ const config: HardhatUserConfig = {
     ],
   },
   networks: {
+    hardhat: {
+      // loggingEnabled: true
+    },
     // "https://rpc-mumbai.maticvigil.com",
     // "https://polygon-mumbai-bor.publicnode.com",
     // "wss://polygon-mumbai-bor.publicnode.com",
@@ -26,22 +29,31 @@ const config: HardhatUserConfig = {
     polygonMumbai: {
       url: `https://rpc-mumbai.maticvigil.com`
     },
+    // "rpc":[
+    //   "https://rpc.sepolia.org",
+    //   "https://rpc2.sepolia.org",
+    //   "https://rpc-sepolia.rockx.com",
+    //   "https://rpc.sepolia.ethpandaops.io",
+    //   "https://sepolia.infura.io/v3/${INFURA_API_KEY}",
+    //   "wss://sepolia.infura.io/v3/${INFURA_API_KEY}",
+    //   "https://sepolia.gateway.tenderly.co",
+    //   "wss://sepolia.gateway.tenderly.co",
+    //   "https://ethereum-sepolia-rpc.publicnode.com",
+    //   "wss://ethereum-sepolia-rpc.publicnode.com"]
     sepolia: {
-      url: `https://rpc.sepolia.org`
+      url: `https://rpc2.sepolia.org`
     }
   },
   etherscan: {
     enabled: true,
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: `${process.env.ETHERSCAN_API_KEY}`
-    // apiKey: {
-    //   mainnet: `${process.env.ETHERSCAN_API_KEY}`,
-    //   sepolia: `${process.env.ETHERSCAN_API_KEY}`,
-    //   goerli: `${process.env.ETHERSCAN_API_KEY}`,
-    //   polygonMumbai: `${process.env.POLYGONSCAN_API_KEY}`,
-    //   polygon: `${process.env.POLYGONSCAN_API_KEY}`
-    // },
+    apiKey: {
+      mainnet: `${process.env.ETHERSCAN_API_KEY}`,
+      sepolia: `${process.env.ETHERSCAN_API_KEY}`,
+      polygonMumbai: `${process.env.POLYGONSCAN_API_KEY}`,
+      polygon: `${process.env.POLYGONSCAN_API_KEY}`
+    },
   },
 };
 
