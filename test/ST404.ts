@@ -638,12 +638,16 @@ describe('ST404', function () {
       let tokenId_w1_1 = await erc404st.encodeOwnerAndId(w1.address, 1);
       let tokenId_w2_0 = await erc404st.encodeOwnerAndId(w2.address, 0);
       let tokenId_w2_1 = await erc404st.encodeOwnerAndId(w2.address, 1);
+      let tokenId_w2_2 = await erc404st.encodeOwnerAndId(w2.address, 2);
 
       await expect(erc404st.connect(w1).setSelfERC721TransferExempt(true)).to.emit(erc404st, 'SetERC721TransferExempt').withArgs(w1.address, true);
       
       await erc404st.connect(owner).transferFrom(owner.address, w2.address, 2n * oneERC20);
 
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, 2n * oneERC20);
+
+      expect( await erc404st.ownerOf(tokenId_w2_0)).to.eq(w2.address);
+      expect( await erc404st.ownerOf(tokenId_w2_1)).to.eq(w2.address);
 
       await expect(erc404st.connect(w1).setSelfERC721TransferExempt(false))
         .to.emit(erc404st, 'SetERC721TransferExempt').withArgs(w1.address, false)
@@ -660,6 +664,17 @@ describe('ST404', function () {
       await erc404st.connect(w1).transfer(ethers.ZeroAddress, 2n * oneERC20);
 
       await expect(erc404st.connect(w1).setSelfERC721TransferExempt(false)).to.not.emit(erc404st, 'Transfer');
+
+      await erc404st.connect(w1).setSelfERC721TransferExempt(true)
+
+      expect( await erc404st.ownerOf(tokenId_w2_0)).to.eq(w1.address);
+      expect( await erc404st.ownerOf(tokenId_w2_1)).to.eq(w2.address);
+      await expect(erc404st.ownerOf(tokenId_w2_2)).to.revertedWith('Token not found');
+
+      await expect(erc404st.connect(w1).transfer(w2.address, oneERC20))
+        .to.emit(erc404st, 'Transfer').withArgs(w1.address, w2.address, oneERC20)
+        .to.emit(erc721events, 'Transfer').withArgs(w1.address, ethers.ZeroAddress, tokenId_w2_0)
+        .to.emit(erc721events, 'Transfer').withArgs(ethers.ZeroAddress, w2.address, tokenId_w2_2);
 
     });
   });

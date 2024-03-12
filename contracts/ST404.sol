@@ -358,8 +358,7 @@ contract ST404 is ERC5169, ERC404Legacy {
         uint balanceTo = _balanceOf[to];
 
         unchecked {
-
-            uint malleableUnits = (balanceFrom + amount) / unit - _owned[from].length;
+            uint fromMalleableUnits = (balanceFrom + amount) / unit - _owned[from].length;
 
             uint256 tokensToBurn = (balanceFrom + amount) / unit - balanceFrom / unit;
             uint ownedTokensToBurn = 0;
@@ -371,15 +370,15 @@ contract ST404 is ERC5169, ERC404Legacy {
             }
 
             // ready to mint
-            currentSubIdToMint = (balanceTo - amount) / unit - _owned[to].length;
+            currentSubIdToMint = _getMinMalleableSubId(to, (balanceTo - amount) / unit - _owned[to].length);
 
-            if (tokensToBurn > malleableUnits) {
-                ownedTokensToBurn = tokensToBurn - malleableUnits;
-                tokensToBurn = malleableUnits;
+            if (tokensToBurn > fromMalleableUnits) {
+                ownedTokensToBurn = tokensToBurn - fromMalleableUnits;
+                tokensToBurn = fromMalleableUnits;
             }
-        
+
             if (tokensToBurn > 0) {
-                uint currentSubIdToBurn = malleableUnits + _solidified[from].length();
+                uint currentSubIdToBurn = fromMalleableUnits + _solidified[from].length();
                 while (tokensToBurn > 0) {
                     if (!isFromWhitelisted) {
                         currentSubIdToBurn = _burnMaximalMalleable(currentSubIdToBurn, from);
@@ -391,7 +390,6 @@ contract ST404 is ERC5169, ERC404Legacy {
                     }
                 }
             }
-        
 
             while (ownedTokensToBurn > 0) {
                 // update _owned for sender
@@ -410,6 +408,20 @@ contract ST404 is ERC5169, ERC404Legacy {
         }
 
         return true;
+    }
+
+    function _getMinMalleableSubId(address _target, uint existingMalleables) internal view returns (uint emptySubId) {
+        uint encodedTokenId;
+        unchecked {
+            while (existingMalleables > 0) {
+                encodedTokenId = _encodeOwnerAndId(_target, emptySubId);
+                if (!_solidified[_target].contains(encodedTokenId)) {
+                    existingMalleables--;
+                }
+                emptySubId++;
+            }
+        }
+        return emptySubId;
     }
 
     function _mintMinimalMalleable(uint startId, address to) internal returns (uint) {
@@ -581,7 +593,7 @@ contract ST404 is ERC5169, ERC404Legacy {
             uint currentSubIdToMint = 0;
             while (tokensToMint > 0) {
                 currentSubIdToMint = _mintMinimalMalleable(currentSubIdToMint, target_);
-                    tokensToMint--;
+                tokensToMint--;
             }
         }
     }
