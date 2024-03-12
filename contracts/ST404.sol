@@ -376,8 +376,8 @@ contract ST404 is ERC5169, ERC404Legacy {
                 ownedTokensToBurn = tokensToBurn - fromMalleableUnits;
                 tokensToBurn = fromMalleableUnits;
             }
-
-            if (tokensToBurn > 0) {
+            
+            if (tokensToBurn > 0 && !(isFromWhitelisted && whitelist[from]) ) {
                 uint currentSubIdToBurn = fromMalleableUnits + _solidified[from].length();
                 while (tokensToBurn > 0) {
                     if (!isFromWhitelisted) {

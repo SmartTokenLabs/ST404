@@ -14,7 +14,7 @@ describe('ST404', function () {
     const [deployer, owner, w1, w2, w3, w4] = await ethers.getSigners();
 
     const ST404 = (await ethers.getContractFactory('ERC404StDev')).connect(deployer);
-    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 10000, owner.address, true);
+    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 100_000_000, owner.address);
 
     return { erc404st, owner, w1, w2, w3, w4 };
   }
@@ -23,8 +23,30 @@ describe('ST404', function () {
     it('Show gas usage for transfer 1 ERC20', async function () {
       const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      let gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, oneERC20);
-      console.log(`Gas for 1 ERC20 transfer: ${gas}`);
+      await erc404st.connect(owner).setWhitelist(w3.address, true);
+
+      let gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w3.address, oneERC20);
+      console.log(`Gas for 1 ERC20 transfer(whitelisted to whitelisted): ${gas}`);
+
+      gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w3.address, 100n * oneERC20);
+      console.log(`Gas for 100 ERC20 transfer(whitelisted to whitelisted): ${gas}`);
+
+      gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w3.address, 1000n * oneERC20);
+      console.log(`Gas for 1000 ERC20 transfer(whitelisted to whitelisted): ${gas}`);
+
+      // await erc404st.connect(owner).transferFrom(owner.address, w3.address, 10n * oneERC20);
+
+      gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w3.address, 10_000n * oneERC20);
+      console.log(`Gas for 10_000 ERC20 transfer(whitelisted to whitelisted): ${gas}`);
+
+      gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w3.address, 100_000n * oneERC20);
+      console.log(`Gas for 100_000 ERC20 transfer(whitelisted to whitelisted): ${gas}`);
+
+      gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w3.address, 1000_000n * oneERC20);
+      console.log(`Gas for 1000_000 ERC20 transfer(whitelisted to whitelisted): ${gas}`);
+
+      // let gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, oneERC20);
+      // console.log(`Gas for 1 ERC20 transfer: ${gas}`);
       
       // 'Show gas usage for transfer 10 ERC20'
       gas = await erc404st.connect(owner).transferFrom.estimateGas(owner.address, w1.address, 10n * oneERC20);

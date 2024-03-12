@@ -37,8 +37,8 @@ async function main() {
 
   const ST404 = (await ethers.getContractFactory('ST404')).connect(admin);
   // const erc404st = await ST404.deploy('ST404 Testing Token', 'STTT', decimals, initialOwnerBalance, admin.address);
-  // const erc404st = await ST404.deploy('ST404 Testing Token', 'STTT', decimals, initialOwnerBalance, "0x8349Fc69c48aF23e030A655736375d8942De5347");
-  const erc404st = await ST404.deploy('ST404 Testing Token v3', 'STTT3', decimals, initialOwnerBalance, "0x6DDD22a9bCc22811BEc8786d2090F7381Dcd22e8");
+  const erc404st = await ST404.deploy('ST404 Alpha Testing 1', 'SATT1', decimals, initialOwnerBalance, "0x8349Fc69c48aF23e030A655736375d8942De5347");
+  // const erc404st = await ST404.deploy('ST404 Testing Token v3', 'STTT3', decimals, initialOwnerBalance, "0x6DDD22a9bCc22811BEc8786d2090F7381Dcd22e8");
 
   await erc404st.waitForDeployment();
 
