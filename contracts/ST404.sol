@@ -41,6 +41,11 @@ contract ST404 is ERC5169, ERC404Legacy {
     event UnSolidified(address requestor, uint tokenId);
 
     error InvalidExemption();
+    error InvalidToken();
+    error InsufficientBalance();
+    error MintingNotSupported();
+    error IndexOutOfBounds();
+    error StateAlreadySet();
 
     function _authorizeSetScripts(string[] memory) internal override onlyOwner {}
 
@@ -63,7 +68,9 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _encodeOwnerAndId(address target_, uint malleableId) internal pure returns (uint id) {
-        require(malleableId < _MAX_AMOUNT, "Too high mallable ID");
+        if (malleableId >= _MAX_AMOUNT) {
+            revert InvalidToken();
+        }
         assembly {
             id := or(shl(96, target_), malleableId)
         }
@@ -71,7 +78,7 @@ contract ST404 is ERC5169, ERC404Legacy {
 
     function _decodeOwnerAndId(uint id) internal pure returns (address target_, uint malleableId) {
         if (id < _MAX_AMOUNT) {
-            revert("Invalid token ID");
+            revert InvalidToken();
         }
         malleableId = id & _MAX_AMOUNT;
         target_ = address(uint160((id >> 96)));
@@ -102,9 +109,9 @@ contract ST404 is ERC5169, ERC404Legacy {
 
         // -1 because we start from 0
         if (
-            numberOfExistingMalleables == 0 ||
-            id > (numberOfExistingMalleables + _solidified[owner].length() - 1) ||
-            address(0) != _ownerOf[fullId]
+            numberOfExistingMalleables == 0 
+            || id > (numberOfExistingMalleables + _solidified[owner].length() - 1) 
+            || address(0) != _ownerOf[fullId]
         ) {
             return false;
         }
@@ -125,7 +132,7 @@ contract ST404 is ERC5169, ERC404Legacy {
                 return mallableOwner;
             }
         }
-        revert("Token not found");
+        revert InvalidToken();
     }
 
     function _isSolidified(uint id) internal view returns (bool) {
@@ -186,7 +193,9 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _doTransferERC20(address from, address to, uint amount) internal {
-        require(amount <= _balanceOf[from], "Insufficient balance");
+        if (amount > _balanceOf[from]) {
+            revert InsufficientBalance();
+        }
         unchecked {
             _balanceOf[from] -= amount;
             _balanceOf[to] += amount;
@@ -281,7 +290,9 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _detectAndHandleTransfer(address from, address to, uint256 amountOrId) internal returns (bool) {
-        require(from != address(0), "Minting not allowed");
+        if (from == address(0)) {
+            revert MintingNotSupported();
+        }
         if (amountOrId > _MAX_AMOUNT) {
             return _transferERC721(from, to, amountOrId);
         } else {
@@ -307,7 +318,7 @@ contract ST404 is ERC5169, ERC404Legacy {
             nativeOwner = _getMalleableOwner(tokenId);
 
             if (nativeOwner == address(0)) {
-                revert("Token doesnt exists");
+                revert  InvalidToken();
             }
             if (from != nativeOwner) {
                 revert InvalidSender();
@@ -442,7 +453,9 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _burnMaximalMalleable(uint startId, address _target) internal returns (uint) {
-        require(startId > 0, "Invalid input ID");
+        if (startId == 0) {
+            revert InvalidToken();
+        }
         uint encodedTokenId;
         do {
             unchecked {
@@ -455,14 +468,12 @@ contract ST404 is ERC5169, ERC404Legacy {
             }
             if (startId == 0) {
                 // code must not reach this point, because of calculations of external request
-                revert("Invalid input ID");
+                revert InvalidToken();
             }
         } while (true);
         return 0;
     }
 
-    /// @notice Function for token approvals
-    /// @dev This function assumes id / native if amount less than or equal to current max id
     function approve(address spender, uint256 amountOrId) external virtual override returns (bool) {
         // check if its not acts like Allowance for all and not amount
         if (amountOrId > _MAX_AMOUNT && amountOrId != type(uint256).max) {
@@ -470,10 +481,11 @@ contract ST404 is ERC5169, ERC404Legacy {
 
             if (owner == address(0)) {
                 owner = _getMalleableOwner(amountOrId);
+                if (owner == address(0)) {
+                    revert InvalidToken();
+                }
             }
-            if (owner == address(0)) {
-                revert("Token to approve doesnt exists");
-            }
+            
             if (msg.sender != owner && !isApprovedForAll[owner][msg.sender]) {
                 revert Unauthorized();
             }
@@ -490,9 +502,11 @@ contract ST404 is ERC5169, ERC404Legacy {
         return true;
     }
 
-    // only for owned(solodified) tokens
+    // only for owned(solidified) tokens
     function tokenByIndex(uint256 index) public view returns (uint256) {
-        require(index < _allTokens.length, "Index out of bounds");
+        if (index >= _allTokens.length) {
+            revert IndexOutOfBounds();
+        }
         return _allTokens[index];
     }
 
@@ -504,7 +518,7 @@ contract ST404 is ERC5169, ERC404Legacy {
         }
         uint total = _balanceOf[owner] / unit;
         if (total <= index) {
-            revert("Index out of bounds");
+            revert IndexOutOfBounds();
         }
         uint tokenId;
         uint skipIndex = index - owned;
@@ -519,12 +533,15 @@ contract ST404 is ERC5169, ERC404Legacy {
                 }
             }
         }
-        revert("Index out of bounds(2)");
+        revert IndexOutOfBounds();
     }
 
-    function tokenURI(uint256 id) public pure override returns (string memory) {
-        // Is it possible to implement _ifExists(id) for st404?
-        uint8 seed = uint8(bytes1(keccak256(abi.encodePacked(id))));
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        if (ownerOf(tokenId) == address(0)){
+            revert InvalidToken();
+        }
+
+        uint8 seed = uint8(bytes1(keccak256(abi.encodePacked(tokenId))));
         string memory imageColor;
         string memory color;
 
@@ -552,7 +569,7 @@ contract ST404 is ERC5169, ERC404Legacy {
             string(
                 abi.encodePacked(
                     '{"name": "ST404 #',
-                    Strings.toString(id),
+                    Strings.toString(tokenId),
                     '","description":"A collection of ST404 Tokens enhanced with TokenScript',
                     '","image":"',
                     _getBubbleIcon(imageColor),
@@ -610,7 +627,7 @@ contract ST404 is ERC5169, ERC404Legacy {
             revert InvalidExemption();
         }
         if (whitelist[target_] == state_) {
-            revert("State already set");
+            revert StateAlreadySet();
         }
 
         // Adjust the ERC721 balances of the target to respect exemption rules.

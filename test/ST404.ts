@@ -43,7 +43,7 @@ describe('ST404', function () {
     expect(await erc404st.decodeOwnerAndId(id)).to.deep.eq([owner.address, mallableId]);
 
     await expect(erc404st.decodeOwnerAndId((1n << 96n) - 1n)).not.to.be.reverted;
-    await expect(erc404st.decodeOwnerAndId((1n << 96n) - 2n)).to.be.revertedWith('Invalid token ID');
+    await expect(erc404st.decodeOwnerAndId((1n << 96n) - 2n)).to.be.revertedWithCustomError(erc404st, "InvalidToken");
   });
 
   it('Detect owner balance after deploy', async function () {
@@ -53,8 +53,9 @@ describe('ST404', function () {
   });
 
   it('Get token metadata', async function () {
-    const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-    let tokenId = 1n;
+    const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+    let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+    await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
 
     let tokenMeta = await erc404st.tokenURI(tokenId);
 
@@ -108,8 +109,8 @@ describe('ST404', function () {
 
   it('try to transfer from zero balance', async function () {
     const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
-    await expect(erc404st.connect(w1).transfer(w2.address, 1)).to.be.revertedWith('Insufficient balance');
-    await expect(erc404st.connect(w1).transfer(w2.address, 2n ** 96n)).to.be.revertedWith('Token doesnt exists');
+    await expect(erc404st.connect(w1).transfer(w2.address, 1)).to.be.revertedWithCustomError(erc404st, 'InsufficientBalance');
+    await expect(erc404st.connect(w1).transfer(w2.address, 2n ** 96n)).to.be.revertedWithCustomError(erc404st, 'InvalidToken');
   });
 
   describe('ERC20 + ERC721 transfers', function () {
@@ -141,8 +142,8 @@ describe('ST404', function () {
       expect(await erc404st.ownedTotal(w1.address)).to.eq(0);
       expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w1.address);
       expect(await erc404st.ownerOf(tokenId_w1_1)).to.eq(w1.address);
-      await expect(erc404st.ownerOf(tokenId_w1_2)).to.revertedWith('Token not found');
-      await expect(erc404st.ownerOf(tokenId_w2_0)).to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w1_2)).to.revertedWithCustomError(erc404st, "InvalidToken");
+      await expect(erc404st.ownerOf(tokenId_w2_0)).to.revertedWithCustomError(erc404st, "InvalidToken");
 
       await erc404st.connect(w1).transferFrom(w1.address, w2.address, oneERC20);
       expect(await erc404st.balanceOf(w1.address)).to.eq(oneERC20);
@@ -153,9 +154,9 @@ describe('ST404', function () {
       expect(await erc404st.ownedTotal(w2.address)).to.eq(0);
 
       expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w1.address);
-      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWithCustomError(erc404st, "InvalidToken");
       expect(await erc404st.ownerOf(tokenId_w2_0)).to.eq(w2.address);
-      await expect(erc404st.ownerOf(tokenId_w2_1)).to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w2_1)).to.revertedWithCustomError(erc404st, "InvalidToken");
     });
   });
 
@@ -192,7 +193,7 @@ describe('ST404', function () {
         .emit(erc404st, 'Transfer')
         .withArgs(w1.address, ethers.ZeroAddress, oneERC20);
 
-      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWithCustomError(erc404st, "InvalidToken");
 
       await expect(erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId_w1_0))
         .emit(erc721events, 'Transfer')
@@ -206,8 +207,8 @@ describe('ST404', function () {
         .emit(erc404st, 'Transfer')
         .withArgs(w2.address, ethers.ZeroAddress, oneERC20);
 
-      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWith('Token not found');
-      await expect(erc404st.ownerOf(tokenId_w1_0)).to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWithCustomError(erc404st, "InvalidToken");
+      await expect(erc404st.ownerOf(tokenId_w1_0)).to.revertedWithCustomError(erc404st, "InvalidToken");
     });
 
     it('Burn ERC721 then tokenId will be locked', async function () {
@@ -224,7 +225,7 @@ describe('ST404', function () {
       expect(await erc404st.solidifiedTotal(w1.address)).to.eq(1);
       expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w1.address);
       expect(await erc404st.ownerOf(tokenId_w1_2)).to.eq(w1.address);
-      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWithCustomError(erc404st, "InvalidToken");
     });
 
     it('Burn ERC20 + Burn ERC721', async function () {
@@ -242,7 +243,7 @@ describe('ST404', function () {
         .withArgs(w1.address, ethers.ZeroAddress, tokenId_w1_1)
         .emit(erc404st, 'Transfer')
         .withArgs(w1.address, ethers.ZeroAddress, oneERC20);
-      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w1_1)).to.revertedWithCustomError(erc404st, "InvalidToken");
 
       expect(await erc404st.balanceOf(w1.address)).to.eq(oneERC20);
     });
@@ -268,7 +269,7 @@ describe('ST404', function () {
         .withArgs(w2.address, ethers.ZeroAddress, oneERC20);
       expect(await erc404st.ownedTotal(w2.address)).to.eq(1);
 
-      await expect(erc404st.ownerOf(tokenId_w1_0)).to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w1_0)).to.revertedWithCustomError(erc404st, "InvalidToken");
 
       expect(await erc404st.balanceOf(w2.address)).to.eq(oneERC20);
     });
@@ -278,7 +279,7 @@ describe('ST404', function () {
     it('ownerOf first NFT', async function () {
       const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      await expect(erc404st.ownerOf(tokenId)).to.be.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId)).to.be.revertedWithCustomError(erc404st, "InvalidToken");
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
       expect(await erc404st.ownerOf(tokenId)).to.eq(w1.address);
       tokenId = await erc404st.encodeOwnerAndId(w1.address, 2);
@@ -289,7 +290,7 @@ describe('ST404', function () {
     it('Mallable Owner non-existent', async function () {
       const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
       let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
-      await expect(erc404st.ownerOf(tokenId)).to.be.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId)).to.be.revertedWithCustomError(erc404st, "InvalidToken");
     });
 
     it('Owned Owner', async function () {
@@ -299,7 +300,7 @@ describe('ST404', function () {
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
       await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId_w1_0);
       expect(await erc404st.ownerOf(tokenId_w1_0)).to.eq(w2.address);
-      await expect(erc404st.ownerOf(tokenId_w1_1)).to.be.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w1_1)).to.be.revertedWithCustomError(erc404st, "InvalidToken");
     });
   });
 
@@ -546,7 +547,7 @@ describe('ST404', function () {
 
       expect(await erc404st.tokenOfOwnerByIndex(w1.address, 0)).to.eq(tokenId_w1_0);
       expect(await erc404st.tokenOfOwnerByIndex(w1.address, 1)).to.eq(tokenId_w1_1);
-      await expect(erc404st.tokenOfOwnerByIndex(w1.address, 2)).to.revertedWith('Index out of bounds');
+      await expect(erc404st.tokenOfOwnerByIndex(w1.address, 2)).to.revertedWithCustomError(erc404st,'IndexOutOfBounds');
 
       expect(await erc404st.tokenOfOwnerByIndex(w2.address, 0)).to.eq(tokenId_w2_0);
       expect(await erc404st.tokenOfOwnerByIndex(w2.address, 1)).to.eq(tokenId_w2_1);
@@ -569,7 +570,7 @@ describe('ST404', function () {
       expect(await erc404st.tokenOfOwnerByIndex(w2.address, 0)).to.eq(tokenId_w1_1);
       expect(await erc404st.tokenOfOwnerByIndex(w2.address, 1)).to.eq(tokenId_w2_0);
       expect(await erc404st.tokenOfOwnerByIndex(w2.address, 2)).to.eq(tokenId_w2_1);
-      await expect(erc404st.tokenOfOwnerByIndex(w2.address, 3)).to.revertedWith('Index out of bounds');
+      await expect(erc404st.tokenOfOwnerByIndex(w2.address, 3)).to.revertedWithCustomError(erc404st,'IndexOutOfBounds');
 
       expect(await erc404st.ownerOf(tokenId_w2_0)).to.eq(w2.address);
       expect(await erc404st.ownerOf(tokenId_w2_1)).to.eq(w2.address);
@@ -583,7 +584,7 @@ describe('ST404', function () {
       await erc404st.connect(w1).transferFrom(w1.address, w2.address, tokenId_w1_1);
 
       expect(await erc404st.tokenByIndex(0)).to.eq(tokenId_w1_1);
-      await expect(erc404st.tokenByIndex(1)).to.revertedWith('Index out of bounds');
+      await expect(erc404st.tokenByIndex(1)).to.revertedWithCustomError(erc404st,'IndexOutOfBounds');
     });
   });
 
@@ -636,6 +637,13 @@ describe('ST404', function () {
   });
 
   describe('setSelfERC721TransferExempt', function () {
+    it('State already set', async function () {
+      const { erc404st, erc721events, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+
+      await erc404st.connect(w1).setSelfERC721TransferExempt(true);
+      await expect(erc404st.connect(w1).setSelfERC721TransferExempt(true)).to.revertedWithCustomError(erc404st, 'StateAlreadySet');
+    })
+
     it('enable/disable', async function () {
       const { erc404st, erc721events, owner, w1, w2, w3 } = await loadFixture(deployFixture);
       let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
@@ -673,7 +681,7 @@ describe('ST404', function () {
 
       expect( await erc404st.ownerOf(tokenId_w2_0)).to.eq(w1.address);
       expect( await erc404st.ownerOf(tokenId_w2_1)).to.eq(w2.address);
-      await expect(erc404st.ownerOf(tokenId_w2_2)).to.revertedWith('Token not found');
+      await expect(erc404st.ownerOf(tokenId_w2_2)).to.revertedWithCustomError(erc404st, "InvalidToken");
 
       await expect(erc404st.connect(w1).transfer(w2.address, oneERC20))
         .to.emit(erc404st, 'Transfer').withArgs(w1.address, w2.address, oneERC20)
