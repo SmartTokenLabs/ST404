@@ -14,7 +14,7 @@ describe('ST404', function () {
     const [deployer, owner, w1, w2, w3, w4] = await ethers.getSigners();
 
     const ST404 = (await ethers.getContractFactory('ERC404StDev')).connect(deployer);
-    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 1000, owner.address);
+    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 100_000_000, owner.address);
 
     const ERC721Events = await ethers.getContractFactory('ERC721Events');
     const erc721events = await ERC721Events.attach(erc404st.target);
@@ -49,7 +49,7 @@ describe('ST404', function () {
   it('Detect owner balance after deploy', async function () {
     const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
 
-    expect(await erc404st.balanceOf(owner.address)).to.eq(1000n * oneERC20);
+    expect(await erc404st.balanceOf(owner.address)).to.eq(100_000_000n * oneERC20);
   });
 
   it('Get token metadata', async function () {
@@ -70,8 +70,9 @@ describe('ST404', function () {
     await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20 - 1n))
       .to.emit(erc404st, 'Transfer')
       .withArgs(owner.address, w1.address, oneERC20 - 1n);
-
+    
     let tokenId = await erc404st.encodeOwnerAndId(w1.address, 0);
+  
     await expect(erc404st.connect(owner).transferFrom(owner.address, w1.address, 1n))
       .to.emit(erc721events, 'Transfer')
       .withArgs(ethers.ZeroAddress, w1.address, tokenId);
@@ -482,6 +483,9 @@ describe('ST404', function () {
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, 100n * oneERC20);
       gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, w2.address, 100n * oneERC20);
       console.log(`Gas for 100 ERC20 transfer: ${gas} (100 Transfer events to another account)`);
+
+      gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, owner.address, oneERC20);
+      console.log(`Gas for 1 ERC20 transfer back to owner: ${gas}`);
 
       await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
       gas = await erc404st.connect(w1).transferFrom.estimateGas(w1.address, w2.address, tokenId);
