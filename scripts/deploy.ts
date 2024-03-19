@@ -51,7 +51,7 @@ async function main() {
   await erc404st.waitForDeployment();
 
   console.log(
-    `ST404 deployed to ${erc404st.target}`
+    `RB404 deployed to ${erc404rb.target}`
   );
 }
 
