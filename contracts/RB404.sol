@@ -8,8 +8,11 @@ import {ST404} from "./ST404.sol";
 
 contract RB404 is ST404 {
     mapping(string => bool) internal _claimedIds;
+
+    // attestation uid -> claimed count
+    mapping(bytes32 => uint) internal _claimed;
+
     uint256 private _nextTokenId;
-    uint private _claimed = 0;
 
     constructor(
         string memory _name,
@@ -21,11 +24,11 @@ contract RB404 is ST404 {
         _nextTokenId = _encodeOwnerAndId(_owner, 0);
     }
 
-    function claim(string calldata accountId, address to) public {
+    function claim(bytes32 uid, string calldata accountId, address to) public {
         require(!_claimedIds[accountId], "account id has claimed");
 
         _claimedIds[accountId] = true;
-        _claimed += 1;
+        _claimed[uid] += 1;
         _nextTokenId += 1;
 
         transferFrom(owner, to, _nextTokenId);
@@ -35,7 +38,7 @@ contract RB404 is ST404 {
         return _claimedIds[accountId];
     }
 
-    function claimedCount() public view returns (uint) {
-        return _claimed;
+    function claimedCount(bytes32 uid) public view returns (uint) {
+        return _claimed[uid];
     }
 }
