@@ -7,9 +7,9 @@ import {ST404} from "./ST404.sol";
 // tokens to generate new NFTs. User Address has solid predictable NFT list
 
 contract RB404 is ST404 {
-    mapping(string => bool) internal _claimed;
-
+    mapping(string => bool) internal _claimedIds;
     uint256 private _nextTokenId;
+    uint private _claimed = 0;
 
     constructor(
         string memory _name,
@@ -22,11 +22,20 @@ contract RB404 is ST404 {
     }
 
     function claim(string calldata accountId, address to) public {
-        require(!_claimed[accountId], "account id has claimed");
+        require(!_claimedIds[accountId], "account id has claimed");
 
-        _claimed[accountId] = true;
+        _claimedIds[accountId] = true;
+        _claimed += 1;
         _nextTokenId += 1;
 
         transferFrom(owner, to, _nextTokenId);
+    }
+
+    function isClaimed(string calldata accountId) public view returns (bool) {
+        return _claimedIds[accountId];
+    }
+
+    function claimedCount() public view returns (uint) {
+        return _claimed;
     }
 }
