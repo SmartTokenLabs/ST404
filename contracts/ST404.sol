@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {ERC404Legacy} from "./ERC404Legacy.sol";
+import {ERC404Legacy, ERC721Receiver} from "./ERC404Legacy.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -42,6 +42,7 @@ contract ST404 is ERC5169, ERC404Legacy {
 
     error InvalidExemption();
     error InvalidToken();
+    error InvalidAmount();
     error InsufficientBalance();
     error MintingNotSupported();
     error IndexOutOfBounds();
@@ -68,7 +69,8 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _encodeOwnerAndId(address target_, uint malleableId) internal pure returns (uint id) {
-        if (malleableId >= _MAX_AMOUNT) {
+        // N1 - fix
+        if (malleableId > _MAX_AMOUNT) {
             revert InvalidToken();
         }
         assembly {
@@ -77,7 +79,8 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _decodeOwnerAndId(uint id) internal pure returns (address target_, uint malleableId) {
-        if (id < _MAX_AMOUNT) {
+        // N1 - fix
+        if (id <= _MAX_AMOUNT) {
             revert InvalidToken();
         }
         malleableId = id & _MAX_AMOUNT;
@@ -290,9 +293,6 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _detectAndHandleTransfer(address from, address to, uint256 amountOrId) internal returns (bool) {
-        if (from == address(0)) {
-            revert MintingNotSupported();
-        }
         if (amountOrId > _MAX_AMOUNT) {
             return _transferERC721(from, to, amountOrId);
         } else {
@@ -311,6 +311,15 @@ contract ST404 is ERC5169, ERC404Legacy {
     }
 
     function _transferERC721(address from, address to, uint tokenId) internal returns (bool) {
+        if (from == address(0)) {
+            revert MintingNotSupported();
+        }
+
+        // PVE003 fix
+        if (to == address(0)) {
+            _burnERC721(tokenId);
+        }
+
         _checkAuthorized(from, msg.sender, tokenId);
         address ownedOwner = _ownerOf[tokenId];
         address nativeOwner;
@@ -330,37 +339,36 @@ contract ST404 is ERC5169, ERC404Legacy {
                 revert InvalidSender();
             }
 
-            if (to == address(0)) {
-                _burnERC721(tokenId);
+            (nativeOwner, ) = _decodeOwnerAndId(tokenId);
+            if (nativeOwner == to) {
+                _unSolidify(tokenId, ownedOwner);
             } else {
-                (nativeOwner, ) = _decodeOwnerAndId(tokenId);
-                if (nativeOwner == to) {
-                    _unSolidify(tokenId, ownedOwner);
-                } else {
-                    _doTransferERC721(from, to, tokenId);
-                }
-                emit ERC721Events.Transfer(from, to, tokenId);
-                _doTransferERC20(from, to, unit);
+                _doTransferERC721(from, to, tokenId);
             }
+            emit ERC721Events.Transfer(from, to, tokenId);
+            _doTransferERC20(from, to, unit);
         }
         return true;
     }
 
-    function _maybeDecreaseERC20Allowance(address spender, uint256 amountOrId) internal {
-        if (msg.sender != spender) {
-            uint256 allowed = allowance[spender][msg.sender];
+    function _maybeDecreaseERC20Allowance(address owner, uint256 amountOrId) internal {
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
 
             if (allowed < amountOrId) {
                 revert Unauthorized();
             }
             // check if its not acts like Allowance for all
             if (allowed != type(uint256).max) {
-                allowance[spender][msg.sender] = allowed - amountOrId;
+                allowance[owner][msg.sender] = allowed - amountOrId;
             }
         }
     }
 
     function _transferERC20(address from, address to, uint amount) internal returns (bool) {
+        if (from == address(0)) {
+            revert MintingNotSupported();
+        }
         _maybeDecreaseERC20Allowance(from, amount);
         _doTransferERC20(from, to, amount);
 
@@ -393,9 +401,8 @@ contract ST404 is ERC5169, ERC404Legacy {
             if (tokensToBurn > 0) {
                 uint currentSubIdToBurn = fromMalleableUnits + _solidified[from].length();
                 while (tokensToBurn > 0) {
-                    if (!isFromWhitelisted) {
-                        currentSubIdToBurn = _burnMaximalMalleable(currentSubIdToBurn, from);
-                    }
+                    // N3 fix
+                    currentSubIdToBurn = _burnMaximalMalleable(currentSubIdToBurn, from);
                     tokensToBurn--;
                     if (tokensToMint > 0) {
                         currentSubIdToMint = _mintMinimalMalleable(currentSubIdToMint, to);
@@ -522,7 +529,9 @@ contract ST404 is ERC5169, ERC404Legacy {
         }
         uint tokenId;
         uint skipIndex = index - owned;
-        for (uint i = 0; i < total + _solidified[owner].length(); i++) {
+        // PVE004 fix
+        uint maxIndexAllowed = total - owned + _solidified[owner].length();
+        for (uint i = 0; i < maxIndexAllowed; i++) {
             tokenId = _encodeOwnerAndId(owner, i);
             if (!_solidified[owner].contains(tokenId)) {
                 if (skipIndex == 0) {
@@ -597,7 +606,8 @@ contract ST404 is ERC5169, ERC404Legacy {
 
     function _burnAllMalleables(address target_) private {
         uint tokensToBurn = balanceOf(target_) / unit - _owned[target_].length;
-        uint currentSubIdToBurn = balanceOf(target_) / unit + _solidified[target_].length();
+        // PVE004-2
+        uint currentSubIdToBurn = tokensToBurn + _solidified[target_].length();
         while (tokensToBurn > 0) {
             currentSubIdToBurn = _burnMaximalMalleable(currentSubIdToBurn, target_);
             unchecked {
@@ -641,6 +651,52 @@ contract ST404 is ERC5169, ERC404Legacy {
 
         emit SetERC721TransferExempt(target_, state_);
         whitelist[target_] = state_;
+    }
+
+    /// @notice Initialization function to set pairs / etc
+    ///         saving gas by avoiding mint / burn on unnecessary targets
+    /// method for admin only
+    function setWhitelist(address target, bool state) public virtual override onlyOwner {
+        // PVE002 fix
+        _setERC721TransferExempt(target, state);
+    }
+
+    /// @notice Function for native transfers with contract support
+    function safeTransferFrom(address from, address to, uint256 id) public virtual override {
+        transferFrom(from, to, id);
+
+        if (
+            // PVE001 fix
+            id > _MAX_AMOUNT &&
+            to.code.length != 0 &&
+            ERC721Receiver(to).onERC721Received(msg.sender, from, id, "") != ERC721Receiver.onERC721Received.selector
+        ) {
+            revert UnsafeRecipient();
+        }
+    }
+
+    /// @notice Function for native transfers with contract support and callback data
+    /// ERC721 tokens only
+    function safeTransferFrom(address from, address to, uint256 id, bytes calldata data) public virtual override {
+        // PVE001 fix
+        if(id <= _MAX_AMOUNT) revert InvalidToken();
+
+        _transferERC721(from, to, id);
+
+        if (
+            to.code.length != 0 &&
+            ERC721Receiver(to).onERC721Received(msg.sender, from, id, data) != ERC721Receiver.onERC721Received.selector
+        ) {
+            revert UnsafeRecipient();
+        }
+    }
+
+    /// @notice Function for fractional transfers
+    // method for ERC20 only
+    function transfer(address to, uint256 amount) public virtual override returns (bool) {
+        // PVE001-2 
+        if (amount > _MAX_AMOUNT) revert InvalidAmount();
+        return _transfer(msg.sender, to, amount);
     }
 }
 

@@ -42,8 +42,8 @@ describe('ST404', function () {
     expect(id).to.equal('0x' + expectedId);
     expect(await erc404st.decodeOwnerAndId(id)).to.deep.eq([owner.address, mallableId]);
 
-    await expect(erc404st.decodeOwnerAndId((1n << 96n) - 1n)).not.to.be.reverted;
-    await expect(erc404st.decodeOwnerAndId((1n << 96n) - 2n)).to.be.revertedWithCustomError(erc404st, "InvalidToken");
+    await expect(erc404st.decodeOwnerAndId(1n << 96n)).not.to.be.reverted;
+    await expect(erc404st.decodeOwnerAndId((1n << 96n) - 1n)).to.be.revertedWithCustomError(erc404st, "InvalidToken");
   });
 
   it('Detect owner balance after deploy', async function () {
@@ -110,7 +110,7 @@ describe('ST404', function () {
   it('try to transfer from zero balance', async function () {
     const { erc404st, owner, w1, w2 } = await loadFixture(deployFixture);
     await expect(erc404st.connect(w1).transfer(w2.address, 1)).to.be.revertedWithCustomError(erc404st, 'InsufficientBalance');
-    await expect(erc404st.connect(w1).transfer(w2.address, 2n ** 96n)).to.be.revertedWithCustomError(erc404st, 'InvalidToken');
+    await expect(erc404st.connect(w1).transfer(w2.address, 2n ** 96n)).to.be.revertedWithCustomError(erc404st, 'InvalidAmount');
   });
 
   describe('ERC20 + ERC721 transfers', function () {
@@ -592,8 +592,8 @@ describe('ST404', function () {
     it('all', async function () {
       const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
 
-      await expect(erc404st.connect(owner).setWhitelist(owner.address, true)).to.not.reverted;
-      await expect(erc404st.connect(w1).setWhitelist(owner.address, true)).to.revertedWithCustomError(
+      await expect(erc404st.connect(owner).setWhitelist(w2.address, true)).to.not.reverted;
+      await expect(erc404st.connect(w1).setWhitelist(owner.address, false)).to.revertedWithCustomError(
         erc404st,
         'Unauthorized',
       );
@@ -671,7 +671,7 @@ describe('ST404', function () {
         .to.emit(erc721events, 'Transfer').withArgs(w1.address, ethers.ZeroAddress, tokenId_w1_0)
         .to.emit(erc721events, 'Transfer').withArgs(w1.address, ethers.ZeroAddress, tokenId_w1_1)
       
-      await erc404st.connect(w2).transfer(w1.address, tokenId_w2_0);
+      await erc404st.connect(w2).transferFrom(w2.address, w1.address, tokenId_w2_0);
 
       await erc404st.connect(w1).transfer(ethers.ZeroAddress, 2n * oneERC20);
 
