@@ -314,13 +314,14 @@ contract ST404 is ERC5169, ERC404Legacy {
         if (from == address(0)) {
             revert MintingNotSupported();
         }
+        
+        _checkAuthorized(from, msg.sender, tokenId);
 
         // PVE003 fix
         if (to == address(0)) {
             _burnERC721(tokenId);
         }
 
-        _checkAuthorized(from, msg.sender, tokenId);
         address ownedOwner = _ownerOf[tokenId];
         address nativeOwner;
         if (ownedOwner == address(0)) {
