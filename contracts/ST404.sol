@@ -320,6 +320,7 @@ contract ST404 is ERC5169, ERC404Legacy {
         // PVE003 fix
         if (to == address(0)) {
             _burnERC721(tokenId);
+            return true;
         }
 
         address ownedOwner = _ownerOf[tokenId];
