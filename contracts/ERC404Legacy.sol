@@ -132,7 +132,7 @@ abstract contract ERC404Legacy is Ownable {
 
     /// @notice Initialization function to set pairs / etc
     ///         saving gas by avoiding mint / burn on unnecessary targets
-    function setWhitelist(address target, bool state) public onlyOwner {
+    function setWhitelist(address target, bool state) public virtual onlyOwner {
         whitelist[target] = state;
         emit SetERC721TransferExempt(target, state);
     }
@@ -183,6 +183,7 @@ abstract contract ERC404Legacy is Ownable {
     /// @notice Function for mixed transfers
     /// @dev This function assumes id / native if amount less than or equal to current max id
     function transferFrom(address from, address to, uint256 amountOrId) public virtual {
+        // PVE001-3 we dont use this method, its overridden in ST404, this contract only base for changes 
         if (amountOrId <= minted) {
             if (from != _ownerOf[amountOrId]) {
                 revert InvalidSender();
@@ -230,6 +231,9 @@ abstract contract ERC404Legacy is Ownable {
 
     /// @notice Function for fractional transfers
     function transfer(address to, uint256 amount) public virtual returns (bool) {
+        // PVE001-2 
+        // method only for ERC20
+        // if ()
         return _transfer(msg.sender, to, amount);
     }
 
