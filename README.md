@@ -14,7 +14,9 @@ ST404 introduces an innovative token standard that builds upon the Pandora-404 w
 
 - **Unified Token Transfer Mechanism**: This contract uniquely supports a unified ERC20 transfer function that applies to both malleable and solidified NFT tokens. Initially, malleable tokens are prioritized for transfers. Importantly, **solidified tokens can indeed be transferred via the ERC20 mechanism once all malleable tokens have been transferred**. This ensures every token, regardless of its state, remains fully participatory in ERC20 transactions and the broader DeFi ecosystem, maximising liquidity. Users are advised to exercise caution to ensure solidified NFTs are not unintentionally transferred through ERC20 transactions, particularly when malleable tokens are depleted.
 
-- **Token Frontend**: This contract comes with a token frontend templet developed with ERC5169 and TokenScript. It is programable with some basic pre-developed features: Display the information about the token logic, Display whether current wallet is whitelisted, Self Whitelist function, Display 721 token IDs. Proejcts can easily add more features/functions to their tokens' Token Frontend.   
+- **Token Frontend**: This contract comes with a token frontend templet developed with ERC5169 and TokenScript. It is programable with some basic pre-developed features: Display the information about the token logic, Display whether current wallet is whitelisted, Self Whitelist function, Display 721 token IDs. Proejcts can easily add more features/functions to their tokens' Token Frontend.
+  
+- **Audited Contracts**: [PeckShield Audit Report ST404](https://github.com/SmartTokenLabs/ST404/blob/main/contracts/PeckShield-Audit-Report-ST404-v1.0.pdf)
 
 ## Design Details
 
