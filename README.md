@@ -2,7 +2,7 @@
 
 ## Overview
 
-ST404 introduces an innovative token standard that builds upon the Pandora-404 works, aiming to optimise gas efficiency and incorporate dynamic, game-like elements into token transactions. This project merges the liquidity and transferability of ERC20 tokens with the unique identification and collectibility of ERC721 tokens. It is designed to address the challenges of high gas costs in large token transfers and enhance user engagement through unique token characteristics.
+ST404 introduces an innovative token standard that builds upon the Pandora-404, ERC-5169 and TokenScript works, aiming to optimise gas efficiency and incorporate dynamic, game-like elements into token transactions. This project merges the liquidity and transferability of ERC20 tokens with the unique identification and collectibility of ERC721 tokens. It is designed to address the challenges of high gas costs in large token transfers and enhance user engagement through unique token characteristics.
 
 ## Key Features
 
