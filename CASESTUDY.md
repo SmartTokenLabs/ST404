@@ -23,7 +23,7 @@ Here's a detailed scenario that encapsulates the token transformation and transf
 
 This scenario illustrates the conversion of token states from non-fungible (ERC721) to fungible (ERC20) and their transfer between parties, showcasing the flexibility and liquidity options provided by this innovative token standard.
 
-We can conceptualise the table based on the scenario provided, where Alice sends an ERC721 token to Bob, and then Bob transforms this token to send 0.5 of an ERC20 token to Charle. The `balanceOf()` function's return values for Alice, Bob, and John will be shown in the context of before and after the transactions:
+We can conceptualise the table based on the scenario provided, where Alice sends an ERC721 token to Bob, and then Bob transforms this token to send 0.5 of an ERC20 token to Charle. The `balanceOf()` function's return values for Alice, Bob, and Charle will be shown in the context of before and after the transactions:
 
 | Return Value of `balanceOf()` | Alice | Bob  | Charle |
 |-------------------------------|-------|------|------|
@@ -33,7 +33,7 @@ We can conceptualise the table based on the scenario provided, where Alice sends
 
 - "Before Transaction" shows the initial state before any transfers.
 - "After Alice sends to Bob" reflects the state after Alice has transferred the ERC721 token to Bob, leading to Alice's balance decreasing by 1 and Bob's increasing by 1.
-- "After Bob transforms & sends to Charle" demonstrates Bob's action of converting the ERC721 token into a malleable form and then transferring 0.5 of an ERC20 token to John. This results in Bob having a balance of 0.5 ERC20 tokens and John receiving 0.5 ERC20 tokens.
+- "After Bob transforms & sends to Charle" demonstrates Bob's action of converting the ERC721 token into a malleable form and then transferring 0.5 of an ERC20 token to Charle. This results in Bob having a balance of 0.5 ERC20 tokens and Charle receiving 0.5 ERC20 tokens.
 
 The following table shows the changes in ERC721 ownership for each participant at different stages of the transactions based on the scenario described.
 
@@ -59,6 +59,6 @@ Given these actions, here's the expected output of `tokenOfOwnerByIndex(0)` for 
 |--------|------------------------------------|----------------------------------|-----------------------------------|
 | Before Transaction | `0x89..64....0001` | No Token (Bob owns no tokens yet) | No Token (Charle owns no tokens) |
 | After Alice sends to Bob | No Token (Alice now owns no tokens) | `0x89..64....0001` | No Token (Charle still owns no tokens) |
-| After Bob transforms & sends to Charle | No Token | No Token | No Token (John receives ERC20 tokens, not ERC721) |
+| After Bob transforms & sends to Charle | No Token | No Token | No Token (Charle receives ERC20 tokens, not ERC721) |
 
-It's important to note that the transformation of an ERC721 token into a malleable form and its partial transfer as ERC20 tokens to Charle would not generate a new ERC721 token ID for John, as he receives ERC20 tokens, and not a whole unit of it. Therefore, `tokenOfOwnerByIndex(0)` would not return a token ID for John in this context.
+It's important to note that the transformation of an ERC721 token into a malleable form and its partial transfer as ERC20 tokens to Charle would not generate a new ERC721 token ID for Charle, as he receives ERC20 tokens, and not a whole unit of it. Therefore, `tokenOfOwnerByIndex(0)` would not return a token ID for Charle in this context.
