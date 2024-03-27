@@ -7,12 +7,11 @@ import {ST404} from "./ST404.sol";
 // tokens to generate new NFTs. User Address has solid predictable NFT list
 
 contract RB404 is ST404 {
-    mapping(string => bool) internal _claimedIds;
+    // id attestation type -> (id attestation ID -> claimed count)
+    mapping(string => mapping(string => uint)) internal _claimedById;
 
     // attestation uid -> claimed count
     mapping(bytes32 => uint) internal _claimed;
-
-    uint256 private _nextTokenId;
 
     constructor(
         string memory _name,
@@ -20,22 +19,17 @@ contract RB404 is ST404 {
         uint8 _decimals,
         uint256 _totalNativeSupply,
         address _owner
-    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner) {
-        _nextTokenId = _encodeOwnerAndId(_owner, 0);
-    }
+    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner) {}
 
-    function claim(bytes32 uid, string calldata accountId, address to) public {
-        require(!_claimedIds[accountId], "account id has claimed");
-
-        _claimedIds[accountId] = true;
+    function claim(bytes32 uid, string calldata idType, string calldata id, address to) public {
+        _claimedById[idType][id] += 1;
         _claimed[uid] += 1;
-        _nextTokenId += 1;
 
-        transferFrom(owner, to, _nextTokenId);
+        transferFrom(owner, to, unit);
     }
 
-    function isClaimed(string calldata accountId) public view returns (bool) {
-        return _claimedIds[accountId];
+    function claimedCountById(string calldata idType, string calldata id) public view returns (uint) {
+        return _claimedById[idType][id];
     }
 
     function claimedCount(bytes32 uid) public view returns (uint) {
