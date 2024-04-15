@@ -40,6 +40,12 @@ async function main() {
   // const erc404st = await ST404.deploy('ST404 Testing Token', 'STTT', decimals, initialOwnerBalance, admin.address);
   // const erc404st = await ST404.deploy('ST404 Alpha Testing 1', 'SATT1', decimals, initialOwnerBalance, "0x8349Fc69c48aF23e030A655736375d8942De5347");
   // const erc404st = await ST404.deploy('ST404 Testing Token v3', 'STTT3', decimals, initialOwnerBalance, "0x6DDD22a9bCc22811BEc8786d2090F7381Dcd22e8");
+  
+  if (admin.address != '0x9c4171b69E5659647556E81007EF941f9B042b1a'){
+    console.log("Please set .env PRIVATE_KEY_ADMIN to be the correct key for admin.address")
+    return;
+  }
+  
   const erc404st = await ST404.deploy('ZipCoin', 'ZIP', decimals, initialOwnerBalance, admin.address, admin.address, 1000n);
   
   await erc404st.waitForDeployment();
