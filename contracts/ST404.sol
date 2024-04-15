@@ -13,10 +13,14 @@ import {ERC20Events} from "./lib/ERC20Events.sol";
 
 import {ERC5169} from "stl-contracts/ERC/ERC5169.sol";
 
+import {CreatorTokenBase} from "@limitbreak/creator-token-contracts/contracts/utils/CreatorTokenBase.sol";
+import {BasicRoyalties} from "@limitbreak/creator-token-contracts/contracts/programmable-royalties/BasicRoyalties.sol";
+import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
+
 // nuance - user can't transfer to other account and back ERC20
 // tokens to generate new NFTs. User Address has solid predictable NFT list
 
-contract ST404 is ERC5169, ERC404Legacy {
+contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
     using EnumerableSet for EnumerableSet.UintSet;
 
     // save list of ERC721 tokens to stay them solid, block from spliting to ERC20
@@ -48,6 +52,12 @@ contract ST404 is ERC5169, ERC404Legacy {
     error IndexOutOfBounds();
     error StateAlreadySet();
 
+    function _requireCallerIsContractOwner() internal view virtual override {
+        if (owner != _msgSender()) {
+            revert Unauthorized();
+        }
+    }
+
     function _authorizeSetScripts(string[] memory) internal override onlyOwner {}
 
     constructor(
@@ -55,17 +65,20 @@ contract ST404 is ERC5169, ERC404Legacy {
         string memory _symbol,
         uint8 _decimals,
         uint256 _totalNativeSupply,
-        address _owner
-    ) ERC404Legacy(_name, _symbol, _decimals, _totalNativeSupply, _owner) {
+        address _owner,
+        address royaltyReceiver, 
+        uint96 feeNumerator
+    ) ERC404Legacy(_name, _symbol, _decimals, _totalNativeSupply, _owner) BasicRoyalties(royaltyReceiver, feeNumerator) {
         _balanceOf[_owner] = totalSupply;
         whitelist[_owner] = true;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC2981, ERC5169) returns (bool) {
         return
             interfaceId == type(IERC20).interfaceId ||
             // ERC721 blocks Metamask to add token
-            ERC5169.supportsInterface(interfaceId);
+            ERC5169.supportsInterface(interfaceId) ||
+            ERC2981.supportsInterface(interfaceId);
     }
 
     function _encodeOwnerAndId(address target_, uint malleableId) internal pure returns (uint id) {
@@ -316,6 +329,8 @@ contract ST404 is ERC5169, ERC404Legacy {
         }
         
         _checkAuthorized(from, msg.sender, tokenId);
+
+        _preValidateTransfer(msg.sender, from, to, tokenId, 0);
 
         // PVE003 fix
         if (to == address(0)) {
@@ -710,8 +725,10 @@ contract ERC404StDev is ST404 {
         string memory _symbol,
         uint8 _decimals,
         uint256 _totalNativeSupply,
-        address _owner
-    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner) {}
+        address _owner,
+        address royaltyReceiver, 
+        uint96 feeNumerator
+    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner, royaltyReceiver, feeNumerator) {}
 
     function solidifiedTotal(address addr) public view returns (uint256) {
         return _solidified[addr].length();

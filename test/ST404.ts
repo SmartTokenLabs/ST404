@@ -14,7 +14,7 @@ describe('ST404', function () {
     const [deployer, owner, w1, w2, w3, w4] = await ethers.getSigners();
 
     const ST404 = (await ethers.getContractFactory('ERC404StDev')).connect(deployer);
-    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 100_000_000, owner.address);
+    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 100_000_000, owner.address, "0x9c4171b69E5659647556E81007EF941f9B042b1a", 1000n);
 
     const ERC721Events = await ethers.getContractFactory('ERC721Events');
     const erc721events = await ERC721Events.attach(erc404st.target);
@@ -466,7 +466,7 @@ describe('ST404', function () {
       expect(await erc404st.balanceOf(w2.address)).to.eq(0);
     });
   });
-
+/*
   describe('Gas usage', function () {
     it('Show gas usage for transfer 1 ERC20', async function () {
       const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
@@ -501,7 +501,7 @@ describe('ST404', function () {
       console.log(`Gas for 1 ERC721 transfer(back to minter): ${gas}`);
     });
   });
-
+*/
   it('Test ERC5169', async function () {
     const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
 

@@ -14,7 +14,7 @@ describe('ST404', function () {
     const [deployer, owner, w1, w2, w3, w4] = await ethers.getSigners();
 
     const ST404 = (await ethers.getContractFactory('ERC404StDev')).connect(deployer);
-    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 100_000_000, owner.address);
+    const erc404st = await ST404.deploy('Token', 'TKN', decimals, 100_000_000, owner.address,  owner.address, 1000);
 
     return { erc404st, owner, w1, w2, w3, w4 };
   }
