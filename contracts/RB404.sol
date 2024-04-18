@@ -7,8 +7,8 @@ import {ST404} from "./ST404.sol";
 // tokens to generate new NFTs. User Address has solid predictable NFT list
 
 contract RB404 is ST404 {
-    // id attestation type -> (id attestation ID -> claimed count)
-    mapping(string => mapping(string => uint)) internal _claimedById;
+    // id attestation ID -> claimed count
+    mapping(string => uint) internal _claimedById;
 
     // attestation uid -> claimed count
     mapping(bytes32 => uint) internal _claimed;
@@ -21,15 +21,15 @@ contract RB404 is ST404 {
         address _owner
     ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner) {}
 
-    function claim(bytes32 uid, string calldata idType, string calldata id, address to) public {
-        _claimedById[idType][id] += 1;
+    function claim(bytes32 uid, string calldata id, address to) public {
+        _claimedById[id] += 1;
         _claimed[uid] += 1;
 
         transferFrom(owner, to, unit);
     }
 
-    function claimedCountById(string calldata idType, string calldata id) public view returns (uint) {
-        return _claimedById[idType][id];
+    function claimedCountById(string calldata id) public view returns (uint) {
+        return _claimedById[id];
     }
 
     function claimedCount(bytes32 uid) public view returns (uint) {
