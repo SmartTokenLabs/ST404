@@ -8,31 +8,35 @@ import {ST404} from "./ST404.sol";
 
 contract RB404 is ST404 {
     // id attestation ID -> claimed count
-    mapping(string => uint) internal _claimedById;
+    mapping(string => uint) public claimedById;
 
     // attestation uid -> claimed count
-    mapping(bytes32 => uint) internal _claimed;
+    mapping(bytes32 => uint) public claimedByUid;
+
+    uint public claimed;
+
+    uint public totalClaimable;
 
     constructor(
         string memory _name,
         string memory _symbol,
         uint8 _decimals,
         uint256 _totalNativeSupply,
-        address _owner
-    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner) {}
+        address _owner,
+        uint256 _totalClaimable
+    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner) {
+        totalClaimable = _totalClaimable;
+    }
 
     function claim(bytes32 uid, string calldata id, address to) public {
-        _claimedById[id] += 1;
-        _claimed[uid] += 1;
+        claimedById[id] += 1;
+        claimedByUid[uid] += 1;
+        claimed += 1;
 
         transferFrom(owner, to, unit);
     }
 
-    function claimedCountById(string calldata id) public view returns (uint) {
-        return _claimedById[id];
-    }
-
-    function claimedCount(bytes32 uid) public view returns (uint) {
-        return _claimed[uid];
+    function setTotalClaimable(uint256 _totalClaimable) public onlyOwner {
+        totalClaimable = _totalClaimable;
     }
 }
