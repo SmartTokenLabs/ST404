@@ -23,8 +23,10 @@ contract RB404 is ST404 {
         uint8 _decimals,
         uint256 _totalNativeSupply,
         address _owner,
+        address royaltyReceiver,
+        uint96 feeNumerator,
         uint256 _totalClaimable
-    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner) {
+    ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner, royaltyReceiver, feeNumerator) {
         totalClaimable = _totalClaimable;
     }
 
