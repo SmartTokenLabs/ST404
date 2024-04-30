@@ -2,11 +2,16 @@
 pragma solidity ^0.8.0;
 
 import {ST404} from "./ST404.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 // nuance - user can't transfer to other account and back ERC20
 // tokens to generate new NFTs. User Address has solid predictable NFT list
 
 contract RB404 is ST404 {
+    using Strings for uint256;
+
+    string private constant _METADATA_URI = "https://api-dev.redbrick.land/v1/nft-profiles/";
+
     // id attestation ID -> claimed count
     mapping(string => uint) public claimedById;
 
@@ -40,5 +45,13 @@ contract RB404 is ST404 {
 
     function setTotalClaimable(uint256 _totalClaimable) public onlyOwner {
         totalClaimable = _totalClaimable;
+    }
+
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        if (ownerOf(tokenId) == address(0)) {
+            revert InvalidToken();
+        }
+
+        return string(abi.encodePacked(_METADATA_URI, tokenId.toString(), "?chainId=", block.chainid.toString()));
     }
 }

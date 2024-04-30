@@ -562,7 +562,7 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
         revert IndexOutOfBounds();
     }
 
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         if (ownerOf(tokenId) == address(0)){
             revert InvalidToken();
         }
