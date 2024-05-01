@@ -22,6 +22,8 @@ contract RB404 is ST404 {
 
     uint public totalClaimable;
 
+    uint public constant MAX_CLAIM = 5;
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -35,12 +37,43 @@ contract RB404 is ST404 {
         totalClaimable = _totalClaimable;
     }
 
+    // TODO limit claimable by owner signature or other way
     function claim(bytes32 uid, string calldata id, address to) public {
+        if (1 + claimed > totalClaimable) {
+            revert InvalidAmount();
+        }
+
+        if (claimedById[id] + 1 > MAX_CLAIM) {
+            revert InvalidAmount();
+        }
+
         claimedById[id] += 1;
         claimedByUid[uid] += 1;
         claimed += 1;
 
-        transferFrom(owner, to, unit);
+        _transferERC20(owner, to, unit);
+    }
+
+    // TODO limit claimable by owner signature or other way
+    function bulkClaim(bytes32 uid, string calldata id, address to, uint count) public {
+        if (count > MAX_CLAIM || count == 0) {
+            revert InvalidAmount();
+        }
+
+        if (count + claimed > totalClaimable) {
+            revert InvalidAmount();
+        }
+
+        if (claimedById[id] + count > MAX_CLAIM) {
+            revert InvalidAmount();
+        }
+
+        claimedById[id] += count;
+        claimedByUid[uid] += count;
+        claimed += count;
+        for (uint i = 0; i < count; i++) {
+            _transferERC20(owner, to, unit);
+        }
     }
 
     function setTotalClaimable(uint256 _totalClaimable) public onlyOwner {
