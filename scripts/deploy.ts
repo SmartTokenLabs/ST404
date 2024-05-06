@@ -38,7 +38,7 @@ async function main() {
   const C = await ethers.getContractFactory('RB404');
   const RB404 = C.connect(admin);
   // const erc404st = await ST404.deploy('ST404 Testing Token', 'STTT', decimals, initialOwnerBalance, admin.address);
-  const erc404rb = await RB404.deploy('RB404 Alpha Testing v3', 'RBTT', decimals, initialOwnerBalance, "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B", "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B", 1000n, 2000);
+  const erc404rb = await RB404.deploy('RB404 Alpha Testing v3', 'RBTT', decimals, initialOwnerBalance, "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B", "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B", 1000n, 100);
   // const erc404st = await ST404.deploy('ST404 Testing Token v3', 'STTT3', decimals, initialOwnerBalance, "0x6DDD22a9bCc22811BEc8786d2090F7381Dcd22e8");
   
   // if (admin.address != '0x9c4171b69E5659647556E81007EF941f9B042b1a'){
