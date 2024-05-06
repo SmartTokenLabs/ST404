@@ -80,6 +80,14 @@ contract RB404 is ST404 {
         totalClaimable = _totalClaimable;
     }
 
+    function resetClaimed() public onlyOwner {
+        claimed = 0;
+    }
+
+    function resetClaimedById(string calldata id) public onlyOwner {
+        claimedById[id] = 0;
+    }
+
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         if (ownerOf(tokenId) == address(0)) {
             revert InvalidToken();
