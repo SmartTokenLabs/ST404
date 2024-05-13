@@ -18,11 +18,7 @@ contract RB404S is ST404 {
 
     string private constant _METADATA_URI = "https://api-dev.redbrick.land/v1/nft-profiles/";
 
-    // id attestation ID -> claimed count
-    mapping(string => uint) public claimedById;
-
-    // attestation uid -> claimed count
-    mapping(bytes32 => uint) public claimedByUid;
+    mapping(address => bool) public claimedByWallet;
 
     address public trustedSigner;
 
@@ -30,10 +26,9 @@ contract RB404S is ST404 {
 
     uint public totalClaimable;
 
-    uint public constant MAX_CLAIM = 5;
-
     event TrustedSignerUpdated(address prevWallet, address newWallet);
     error WrongSignature();
+    error AllClaimed();
 
     constructor(
         string memory _name,
@@ -55,7 +50,7 @@ contract RB404S is ST404 {
         trustedSigner = signer;
     }
 
-    function getSigner(bytes32 uid, string calldata id, address to, uint256 amount, bytes memory signature) public view returns (address) {
+    function getSigner(address to, bytes memory signature) public view returns (address) {
         (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
 
         return
@@ -63,7 +58,7 @@ contract RB404S is ST404 {
                 keccak256(
                     abi.encodePacked(
                         "\x19Ethereum Signed Message:\n32",
-                        keccak256(abi.encode(uid, keccak256(abi.encodePacked(id)), address(this), block.chainid, to, amount))
+                        keccak256(abi.encode(address(this), block.chainid, to))
                     )
                 ),
                 v,
@@ -96,51 +91,37 @@ contract RB404S is ST404 {
         // implicitly return (r, s, v)
     }
 
-    function bulkClaim(bytes32 uid, string calldata id, uint numberToMint, bytes memory signature) public {
+    function claim(bytes memory signature) public {
 
-        if (trustedSigner != getSigner(uid, id, msg.sender, numberToMint, signature)) {
+        if (trustedSigner != getSigner(msg.sender, signature)) {
             revert WrongSignature();
         }
 
-        if (numberToMint > MAX_CLAIM || numberToMint == 0) {
+        if (claimedByWallet[msg.sender]) {
             revert InvalidAmount();
         }
 
-        if (numberToMint + claimed > totalClaimable) {
-            revert InvalidAmount();
+        if (claimed >= totalClaimable) {
+            revert AllClaimed();
         }
 
-        if (claimedById[id] + numberToMint > MAX_CLAIM) {
-            revert InvalidAmount();
-        }
-        claimedById[id] += numberToMint;
-        claimedByUid[uid] += numberToMint;
-        claimed += numberToMint;
-        _mintERC20(msg.sender, numberToMint * unit);
+        claimedByWallet[msg.sender] = true;
+        claimed++;
+        _mintERC20(msg.sender);
     }
 
-    function _mintERC20(address to, uint amount) internal returns (bool) {
+    function _mintERC20(address to) internal returns (bool) {
 
         unchecked {
-            _balanceOf[to] += amount;
+            _balanceOf[to] += unit;
         }
-        emit ERC20Events.Transfer(address(0), to, amount);
+        emit ERC20Events.Transfer(address(0), to, unit);
 
         uint balanceTo = _balanceOf[to];
 
         unchecked {
-
-            uint256 tokensToMint = amount;
-            uint currentSubIdToMint = 0;
-
             if (!whitelist[to]) {
-                tokensToMint = (balanceTo / unit) - ((balanceTo - amount) / unit);
-                currentSubIdToMint = _getMinMalleableSubId(to, (balanceTo - amount) / unit - _owned[to].length);
-            }
-
-            while (tokensToMint > 0) {
-                currentSubIdToMint = _mintMinimalMalleable(currentSubIdToMint, to);
-                tokensToMint--;
+                _mintMinimalMalleable(_getMinMalleableSubId(to, (balanceTo - unit) / unit - _owned[to].length), to);
             }
         }
 

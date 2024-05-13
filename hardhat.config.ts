@@ -24,16 +24,6 @@ const config: HardhatUserConfig = {
       },
       // loggingEnabled: true
     },
-    // "https://rpc-mumbai.maticvigil.com",
-    // "https://polygon-mumbai-bor.publicnode.com",
-    // "wss://polygon-mumbai-bor.publicnode.com",
-    // "https://polygon-mumbai.gateway.tenderly.co",
-    // "wss://polygon-mumbai.gateway.tenderly.co"
-    // "https://matic-mumbai.chainstacklabs.com"
-    polygonMumbai: {
-      // url: `https://rpc-mumbai.maticvigil.com`
-      url: `https://polygon-mumbai-bor.publicnode.com`,
-    },
     // "rpc":[
     //   "https://rpc.sepolia.org",
     //   "https://rpc2.sepolia.org",
@@ -62,6 +52,12 @@ const config: HardhatUserConfig = {
       url: 'https://testrpc.xlayer.tech',
       accounts: [process.env.PRIVATE_KEY_ADMIN || ''],
     },
+    polygonAmoy: {
+      // "https://polygon-amoy-bor-rpc.publicnode.com",
+      // "chainId": 80002,
+      url: "https://rpc-amoy.polygon.technology",
+      accounts: [process.env.PRIVATE_KEY_ADMIN || ''],
+    }
   },
   etherscan: {
     enabled: true,
@@ -70,7 +66,7 @@ const config: HardhatUserConfig = {
     apiKey: {
       mainnet: `${process.env.ETHERSCAN_API_KEY}`,
       sepolia: `${process.env.ETHERSCAN_API_KEY}`,
-      polygonMumbai: `${process.env.POLYGONSCAN_API_KEY}`,
+      polygonAmoy: `${process.env.POLYGONSCAN_API_KEY}`,
       polygon: `${process.env.POLYGONSCAN_API_KEY}`,
       xlayer: `${process.env.OKX_API_KEY}`,
       okx: `${process.env.OKX_API_KEY}`,
@@ -90,6 +86,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: 'https://www.oklink.com/api/v5/explorer/contract/verify-source-code-plugin/XLAYER_TESTNET', //or https://www.oklink.com/api/v5/explorer/contract/verify-source-code-plugin/XLAYER for mainnet
           browserURL: 'https://www.oklink.com/xlayer-test', //or https://www.oklink.com/xlayer for mainnet
+        },
+      },
+      {
+        network: 'polygonAmoy',
+        chainId: 80002, //196 for mainnet
+        urls: {
+          apiURL: 'https://api-amoy.polygonscan.com/api', 
+          browserURL: 'https://amoy.polygonscan.com/',
         },
       },
     ],
