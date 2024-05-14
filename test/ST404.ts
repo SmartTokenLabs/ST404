@@ -59,11 +59,26 @@ describe('ST404', function () {
 
     let tokenMeta = await erc404st.tokenURI(tokenId);
 
-    let jsonData: JSON = JSON.parse(tokenMeta);
+    const json = atob(tokenMeta.substring(29));
+    const jsonData = JSON.parse(json);
+    // console.log(jsonData);
+    
+    // must not throw on base64 decode
+    const svg = atob(jsonData.image.substring(26));
+    // console.log(svg);
+
     // @ts-ignore
     expect(jsonData.name).to.eq(`ST404 #${tokenId}`);
     // @ts-ignore
     expect(jsonData.description).to.eq(`A collection of ST404 Tokens enhanced with TokenScript`);
+  });
+
+  it('Get contract metadata', async function () {
+    const { erc404st, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+    
+    expect(await erc404st.contractURI()).to.eq(``);
+    await erc404st.connect(owner).setContractUri("123");
+    expect(await erc404st.contractURI()).to.eq(`123`);
   });
 
   it('Transfer 1 unit to wallet1', async function () {

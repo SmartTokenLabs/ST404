@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {ERC404Legacy, ERC721Receiver} from "./ERC404Legacy.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
@@ -30,6 +31,8 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
 
     uint256[] private _allTokens;
     mapping(uint256 tokenId => uint256) private _allTokensIndex;
+
+    string public contractURI = "";
 
     /// @dev TokenId packed next way: [address ¹⁶⁰] [sequentialID⁹⁶]
     // bit 1 - bit 160 - walletAddress, which minted the token,
@@ -66,9 +69,12 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
         uint8 _decimals,
         uint256 _totalNativeSupply,
         address _owner,
-        address royaltyReceiver, 
+        address royaltyReceiver,
         uint96 feeNumerator
-    ) ERC404Legacy(_name, _symbol, _decimals, _totalNativeSupply, _owner) BasicRoyalties(royaltyReceiver, feeNumerator) {
+    )
+        ERC404Legacy(_name, _symbol, _decimals, _totalNativeSupply, _owner)
+        BasicRoyalties(royaltyReceiver, feeNumerator)
+    {
         _balanceOf[_owner] = totalSupply;
         whitelist[_owner] = true;
     }
@@ -79,6 +85,10 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
             // ERC721 blocks Metamask to add token
             ERC5169.supportsInterface(interfaceId) ||
             ERC2981.supportsInterface(interfaceId);
+    }
+
+    function setContractUri(string memory _contractURI) external onlyOwner {
+        contractURI = _contractURI;
     }
 
     function _encodeOwnerAndId(address target_, uint malleableId) internal pure returns (uint id) {
@@ -125,9 +135,9 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
 
         // -1 because we start from 0
         if (
-            numberOfExistingMalleables == 0 
-            || id > (numberOfExistingMalleables + _solidified[owner].length() - 1) 
-            || address(0) != _ownerOf[fullId]
+            numberOfExistingMalleables == 0 ||
+            id > (numberOfExistingMalleables + _solidified[owner].length() - 1) ||
+            address(0) != _ownerOf[fullId]
         ) {
             return false;
         }
@@ -327,7 +337,7 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
         if (from == address(0)) {
             revert MintingNotSupported();
         }
-        
+
         _checkAuthorized(from, msg.sender, tokenId);
 
         _preValidateTransfer(msg.sender, from, to, tokenId, 0);
@@ -344,7 +354,7 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
             nativeOwner = _getMalleableOwner(tokenId);
 
             if (nativeOwner == address(0)) {
-                revert  InvalidToken();
+                revert InvalidToken();
             }
             if (from != nativeOwner) {
                 revert InvalidSender();
@@ -410,8 +420,8 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
                 ownedTokensToBurn = tokensToBurn - fromMalleableUnits;
                 tokensToBurn = fromMalleableUnits;
             }
-            
-            if (isFromWhitelisted){
+
+            if (isFromWhitelisted) {
                 tokensToBurn = 0;
             }
 
@@ -509,7 +519,7 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
                     revert InvalidToken();
                 }
             }
-            
+
             if (msg.sender != owner && !isApprovedForAll[owner][msg.sender]) {
                 revert Unauthorized();
             }
@@ -563,7 +573,7 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
     }
 
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        if (ownerOf(tokenId) == address(0)){
+        if (ownerOf(tokenId) == address(0)) {
             revert InvalidToken();
         }
 
@@ -594,14 +604,19 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
         return
             string(
                 abi.encodePacked(
-                    '{"name": "ST404 #',
-                    Strings.toString(tokenId),
-                    '","description":"A collection of ST404 Tokens enhanced with TokenScript',
-                    '","image":"',
-                    _getBubbleIcon(imageColor),
-                    '","attributes":[{"trait_type":"Color","value":"',
-                    color,
-                    '"}]}'
+                    "data:application/json;base64,",
+                    Base64.encode(
+                        abi.encodePacked(
+                            '{"name": "ST404 #',
+                            Strings.toString(tokenId),
+                            '","description":"A collection of ST404 Tokens enhanced with TokenScript',
+                            '","image":"',
+                            _getBubbleIconInBase64(imageColor),
+                            '","attributes":[{"trait_type":"Color","value":"',
+                            color,
+                            '"}]}'
+                        )
+                    )
                 )
             );
     }
@@ -617,6 +632,20 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
                     "' />",
                     "<circle cx='35' cy='15' r='5' fill='white' />",
                     "</svg>"
+                )
+            );
+    }
+
+    function _getBubbleIconInBase64(string memory color) private pure returns (string memory) {
+        return
+            string(
+                abi.encodePacked(
+                    "data:image/svg+xml;base64,",
+                    Base64.encode(
+                        bytes(
+                            _getBubbleIcon(color)
+                        )
+                    )
                 )
             );
     }
@@ -696,7 +725,7 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
     /// ERC721 tokens only
     function safeTransferFrom(address from, address to, uint256 id, bytes calldata data) public virtual override {
         // PVE001 fix
-        if(id <= _MAX_AMOUNT) revert InvalidToken();
+        if (id <= _MAX_AMOUNT) revert InvalidToken();
 
         _transferERC721(from, to, id);
 
@@ -711,7 +740,7 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
     /// @notice Function for fractional transfers
     // method for ERC20 only
     function transfer(address to, uint256 amount) public virtual override returns (bool) {
-        // PVE001-2 
+        // PVE001-2
         if (amount > _MAX_AMOUNT) revert InvalidAmount();
         return _transfer(msg.sender, to, amount);
     }
@@ -726,7 +755,7 @@ contract ERC404StDev is ST404 {
         uint8 _decimals,
         uint256 _totalNativeSupply,
         address _owner,
-        address royaltyReceiver, 
+        address royaltyReceiver,
         uint96 feeNumerator
     ) ST404(_name, _symbol, _decimals, _totalNativeSupply, _owner, royaltyReceiver, feeNumerator) {}
 
