@@ -705,4 +705,25 @@ describe('ST404', function () {
 
     });
   });
+  
+  describe('royalty', function () {
+    
+    it('info', async function () {
+      const { erc404st, erc721events, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      expect(await erc404st.royaltyInfo(tokenId_w1_0, 1000)).to.deep.eq(["0x9c4171b69E5659647556E81007EF941f9B042b1a", 100])
+    });
+    it('change', async function () {
+      const { erc404st, erc721events, owner, w1, w2, w3 } = await loadFixture(deployFixture);
+      let tokenId_w1_0 = await erc404st.encodeOwnerAndId(w1.address, 0);
+      
+      await erc404st.connect(owner).transferFrom(owner.address, w1.address, oneERC20);
+      await expect(erc404st.connect(w2).setRoyalty(w2.address, 2000)).to.revertedWithCustomError(erc404st, "Unauthorized");
+      await erc404st.connect(owner).setRoyalty(w2.address, 2000);
+      expect(await erc404st.royaltyInfo(tokenId_w1_0, 1000)).to.deep.eq([w2.address, 200])
+    });
+  });
+
 });

@@ -79,6 +79,10 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
         whitelist[_owner] = true;
     }
 
+    function setRoyalty(address receiver, uint96 feeNumerator) external onlyOwner {
+        _setDefaultRoyalty(receiver, feeNumerator);
+    }
+
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC2981, ERC5169) returns (bool) {
         return
             interfaceId == type(IERC20).interfaceId ||
