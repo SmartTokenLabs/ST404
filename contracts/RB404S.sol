@@ -16,7 +16,8 @@ contract RB404S is ST404 {
     using Strings for uint256;
     using ECDSA for bytes32;
 
-    string private constant _METADATA_URI = "https://api-dev.redbrick.land/v1/nft-profiles/";
+    // string private constant _METADATA_URI = "https://api-dev.redbrick.land/v1/nft-profiles/";
+    string private constant _METADATA_URI = "https://api.redbrick.land/v1/nft-profiles/";
 
     mapping(address => bool) public claimedByWallet;
 
