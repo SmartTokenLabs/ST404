@@ -35,21 +35,23 @@ async function main() {
   const tokenName = "Brc:ID"
   const tokenSymbol = "BID"
   const decimals = 8n;
-  const initialAmount = 0;
+  const initialAmount = 100;
   const adminWallet = "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B"
-  const royaltyReceiver = "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B"
+  const royaltyReceiver = "0x342A7b30c0daF528aB8786f497b2c20112Ef4364"
   const royaltyAmount = 200 // 2%
   const totalClaimable = 10_000;
   const adminSigner = '0x1c18e4eF0C9740e258835Dbb26E6C5fB4684C7a0'
-  throw Error("make sure you set contractURI value in the contract line 35 of ST404.sol")
+  const contractURI = "https://dev.redbrick.land/BrcID.json"
   
   const C = await ethers.getContractFactory('RB404S');
   const RB404S = C.connect(admin);
 
   const erc404st = await RB404S.deploy(tokenName, tokenSymbol, decimals, initialAmount, adminWallet, royaltyReceiver, royaltyAmount, totalClaimable ,adminSigner);
-
   
   await erc404st.waitForDeployment();
+
+  let tx = await erc404st.connect(admin).setContractUri(contractURI);
+  await tx.wait();
 
   console.log(
     `ST404S deployed to ${erc404st.target}`
