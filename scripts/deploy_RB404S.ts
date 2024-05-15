@@ -32,16 +32,16 @@ async function main() {
   }
   
   // const [deployer, owner, w1, w2] = await ethers.getSigners();
-  const decimals = 8n;
-  const totalClaimable = 10_000;
-  const initialAmount = 0;
   const tokenName = "Brc:ID"
   const tokenSymbol = "BID"
+  const decimals = 8n;
+  const initialAmount = 0;
+  const adminWallet = "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B"
+  const royaltyReceiver = "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B"
   const royaltyAmount = 200 // 2%
-  throw Error("make sure this is correct wallet address")
-  const adminSigner = '0x9c4171b69E5659647556E81007EF941f9B042b1a'
-  const adminWallet = admin.address
-  const royaltyReceiver = admin.address
+  const totalClaimable = 10_000;
+  const adminSigner = '0x1c18e4eF0C9740e258835Dbb26E6C5fB4684C7a0'
+  throw Error("make sure you set contractURI value in the contract line 35 of ST404.sol")
   
   const C = await ethers.getContractFactory('RB404S');
   const RB404S = C.connect(admin);
