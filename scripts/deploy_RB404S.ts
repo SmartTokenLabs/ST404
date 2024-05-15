@@ -35,12 +35,18 @@ async function main() {
   const decimals = 8n;
   const totalClaimable = 10_000;
   const initialAmount = 0;
+  throw Error("make sure this is correct wallet address")
   const adminSigner = '0x9c4171b69E5659647556E81007EF941f9B042b1a'
+  const tokenName = "BRC:ID"
+  const tokenSymbol = "BRC:ID"
+  const adminWallet = admin.address
+  const royaltyReceiver = admin.address
+  const royaltyAmount = 200 // 2%
   
   const C = await ethers.getContractFactory('RB404S');
   const RB404S = C.connect(admin);
 
-  const erc404st = await RB404S.deploy('Token', 'TKN', decimals, initialAmount, admin.address, admin.address, 1000, totalClaimable ,adminSigner);
+  const erc404st = await RB404S.deploy(tokenName, tokenSymbol, decimals, initialAmount, adminWallet, royaltyReceiver, royaltyAmount, totalClaimable ,adminSigner);
 
   
   await erc404st.waitForDeployment();
