@@ -36,13 +36,13 @@ async function main() {
   const tokenName = "Brc:ID"
   const tokenSymbol = "BID"
   const decimals = 8n;
-  const initialAmount = 100; // we can transfer those tokens to any other account
+  const initialAmount = 1_000; // we can transfer those tokens to any other account
   const adminWallet = "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B"
   const royaltyReceiver = "0x342A7b30c0daF528aB8786f497b2c20112Ef4364"
   const royaltyAmount = 200 // 2%
   const totalClaimable = 10_000;
   const adminSigner = '0x1c18e4eF0C9740e258835Dbb26E6C5fB4684C7a0'
-  const contractURI = "https://dev.redbrick.land/BrcID.json"
+  const contractURI = "https://redbrick.land/BrcID.json"
 
   console.log(`Deployer: "${admin.address}"`);
 	console.log(
