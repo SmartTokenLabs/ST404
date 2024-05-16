@@ -57,7 +57,12 @@ const config: HardhatUserConfig = {
       // "chainId": 80002,
       url: "https://rpc-amoy.polygon.technology",
       accounts: [process.env.PRIVATE_KEY_ADMIN || ''],
-    }
+    },
+    polygon: {
+      // url: 'https://polygon-rpc.com',
+      url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
+      accounts: [process.env.PRIVATE_KEY_ADMIN || ''],
+    },
   },
   etherscan: {
     enabled: true,

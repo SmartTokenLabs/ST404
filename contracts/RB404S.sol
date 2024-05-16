@@ -9,9 +9,6 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {ERC721Events} from "./lib/ERC721Events.sol";
 import {ERC20Events} from "./lib/ERC20Events.sol";
 
-// nuance - user can't transfer to other account and back ERC20
-// tokens to generate new NFTs. User Address has solid predictable NFT list
-
 contract RB404S is ST404 {
     using Strings for uint256;
     using ECDSA for bytes32;

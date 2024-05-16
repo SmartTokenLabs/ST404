@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { getFee } from "./lib";
 const hre = require('hardhat')
 require('dotenv/config')
 
@@ -29,33 +30,79 @@ async function main() {
       gasLimit: 100_000,
     })
     await tx.wait()
-  }
+  } 
   
   // const [deployer, owner, w1, w2] = await ethers.getSigners();
   const tokenName = "Brc:ID"
   const tokenSymbol = "BID"
   const decimals = 8n;
-  const initialAmount = 100;
+  const initialAmount = 100; // we can transfer those tokens to any other account
   const adminWallet = "0x851438Ecb37FAe596DcD49bDe643D170F3aa225B"
   const royaltyReceiver = "0x342A7b30c0daF528aB8786f497b2c20112Ef4364"
   const royaltyAmount = 200 // 2%
   const totalClaimable = 10_000;
   const adminSigner = '0x1c18e4eF0C9740e258835Dbb26E6C5fB4684C7a0'
   const contractURI = "https://dev.redbrick.land/BrcID.json"
+
+  console.log(`Deployer: "${admin.address}"`);
+	console.log(
+		`Deployer balance "${ethers.formatEther(
+			await provider.getBalance(admin.address)
+		)}"`
+	);
+
+  let addressToCheck = admin.address
+
+  let nonce = await provider.getTransactionCount(addressToCheck);
+  let pendingNonce = await provider.getTransactionCount(addressToCheck, "pending");
+
+  if (nonce !== pendingNonce) {
+    console.log(
+      "There are pending transactions. Are you sure you want to continue? Your TX can stuck if previous TXes had set low gas value."
+    );
+
+    console.log("+++ getTransactionCount:", nonce);
+    console.log("+++ pending tx Count:", pendingNonce);
+    
+    let pendingBlock = await provider.getBlock("pending",true);
+
+    let prefetchedTransactions = pendingBlock?.prefetchedTransactions
+    let ownTxes = prefetchedTransactions?.filter(
+      (tx) => {
+        return tx.from.toLowerCase() == addressToCheck.toLowerCase()}
+    );
+    console.log(ownTxes)
+
+    console.log("Stop script ... exit...");
+    console.log("-----------------------");
+    return;
+  } else {
+    console.log("No pending transactions. Continue...");
+  }
+
+  let fee = await getFee(admin);
+  if (!fee) {
+    console.log("No fee. Stop script ... exit...");
+    console.log("-----------------------");
+    return;
+  }
   
   const C = await ethers.getContractFactory('RB404S');
   const RB404S = C.connect(admin);
 
-  const erc404st = await RB404S.deploy(tokenName, tokenSymbol, decimals, initialAmount, adminWallet, royaltyReceiver, royaltyAmount, totalClaimable ,adminSigner);
-  
-  await erc404st.waitForDeployment();
+  const erc404st = await RB404S.deploy(tokenName, tokenSymbol, decimals, initialAmount, adminWallet, royaltyReceiver, royaltyAmount, totalClaimable ,adminSigner, fee);
 
-  let tx = await erc404st.connect(admin).setContractUri(contractURI);
-  await tx.wait();
+  await erc404st.waitForDeployment();
 
   console.log(
     `ST404S deployed to ${erc404st.target}`
   );
+
+  let tx = await erc404st.connect(admin).setContractUri(contractURI, fee);
+  await tx.wait();
+  
+  console.log(`ST404S contract URI set`);
+
 }
 
 // We recommend this pattern to be able to use async/await everywhere
