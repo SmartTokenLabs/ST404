@@ -92,6 +92,10 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
     }
 
     function setContractUri(string memory _contractURI) external onlyOwner {
+        _setContractUri(_contractURI);
+    }
+
+    function _setContractUri(string memory _contractURI) internal {
         contractURI = _contractURI;
     }
 
@@ -641,17 +645,7 @@ contract ST404 is ERC5169, ERC404Legacy, CreatorTokenBase, BasicRoyalties {
     }
 
     function _getBubbleIconInBase64(string memory color) private pure returns (string memory) {
-        return
-            string(
-                abi.encodePacked(
-                    "data:image/svg+xml;base64,",
-                    Base64.encode(
-                        bytes(
-                            _getBubbleIcon(color)
-                        )
-                    )
-                )
-            );
+        return string(abi.encodePacked("data:image/svg+xml;base64,", Base64.encode(bytes(_getBubbleIcon(color)))));
     }
 
     function _burnAllMalleables(address target_) private {
