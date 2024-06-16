@@ -30,7 +30,7 @@ Please refer to [Case Study](CASESTUDY.md) for a low level detail scenario-based
 
 Given we have 2 types of internal representation of NFTs in the contract, what does the word "balance" mean? In the context of this contract, a user's Balance is the maximum amount of tokens a user can transfer out using ERC20 `transfer()` function, not the value of internal storage `mapping(address => uint256)`. To avoid the confusion, the variable 
 
-Using Alice's token transfer to Bob as an example, suppose Alice has one unit of token, normally, its ID is its address followed by token index. So if her address is `0x8964...8964``, the token ID is `0x8964896489648964896489648964896489648964....0001``. This ID is deduced and not stored in the contract. Let's differentiate between ERC20 and ERC721 transfers:
+Using Alice's token transfer to Bob as an example, suppose Alice has one unit of token, normally, its ID is its address followed by token index. So if her address is `0x8964...8964`, the token ID is `0x8964896489648964896489648964896489648964....0001`. This ID is deduced and not stored in the contract. Let's differentiate between ERC20 and ERC721 transfers:
 
 #### ERC20 Transfer:
 - **Action**: Alice executes `transfer(bob, 100000000)` to send 1 unit (assuming 8 decimals) to Bob.
